@@ -31,7 +31,7 @@ export type SortOption = 'dueDate' | 'createdAt' | 'priority' | 'title';
 export interface AppState {
   tasks: Task[];
   labels: Label[];
-  currentView: 'todo' | 'gantt' | 'stats' | 'settings';
+  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug';
   filters: TaskFilter;
   sortBy: SortOption;
   sortOrder: 'asc' | 'desc';

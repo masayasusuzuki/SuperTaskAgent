@@ -219,7 +219,7 @@ export default function GanttChart() {
                         isSunday && "text-red-700 font-medium",
                         !isToday(day) && !isSaturday && !isSunday && "text-gray-700"
                       )}>
-                        {format(day, 'M/d', { locale: ja })}
+                        {format(day, 'M/d(E)', { locale: ja })}
                       </div>
                     </div>
                   );

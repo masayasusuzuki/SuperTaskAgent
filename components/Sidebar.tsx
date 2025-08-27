@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { List, BarChart3, Settings, Plus, Tag } from 'lucide-react';
+import { List, BarChart3, Settings, Plus, Tag, Calendar, Bug } from 'lucide-react';
 import { useTaskStore } from '@/store/useStore';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -18,14 +18,16 @@ const Sidebar: React.FC = () => {
   const menuItems = [
     { id: 'todo', label: 'Todo一覧', icon: List },
     { id: 'gantt', label: 'ガントチャート', icon: BarChart3 },
+    { id: 'calendar', label: 'カレンダー', icon: Calendar },
     { id: 'stats', label: '統計・レポート', icon: BarChart3 },
-    { id: 'settings', label: '設定', icon: Settings }
+    { id: 'settings', label: '設定', icon: Settings },
+    { id: 'debug', label: 'デバッグ', icon: Bug }
   ] as const;
 
   return (
     <div className="w-72 h-screen bg-white border-r border-gray-200 flex flex-col overflow-y-auto">
       <div className="p-6 border-b border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-900">タスク管理</h2>
+        <h2 className="text-xl font-semibold text-gray-900">SuperTaskAgent</h2>
       </div>
 
       <nav className="flex-1 p-4">

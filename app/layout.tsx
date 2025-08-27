@@ -5,7 +5,7 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'タスク管理アプリ',
+  title: 'S.T.A',
   description: '本業・副業・プライベートのタスクを一括管理できるアプリケーション',
 }
 

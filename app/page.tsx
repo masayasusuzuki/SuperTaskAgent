@@ -5,6 +5,10 @@ import { useTaskStore } from '@/store/useStore';
 import Sidebar from '@/components/Sidebar';
 import TodoList from '@/components/TodoList';
 import GanttChart from '@/components/GanttChart';
+import Calendar from '@/components/Calendar';
+import Stats from '@/components/Stats';
+import Settings from '@/components/Settings';
+import Debug from '@/components/Debug';
 import { storage } from '@/lib/storage';
 
 export default function Home() {
@@ -54,24 +58,14 @@ export default function Home() {
         return <TodoList />;
       case 'gantt':
         return <GanttChart />;
+      case 'calendar':
+        return <Calendar />;
       case 'stats':
-        return (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-4">統計・レポート</h2>
-              <p className="text-gray-600">この機能は現在開発中です</p>
-            </div>
-          </div>
-        );
+        return <Stats />;
       case 'settings':
-        return (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-4">設定</h2>
-              <p className="text-gray-600">この機能は現在開発中です</p>
-            </div>
-          </div>
-        );
+        return <Settings />;
+      case 'debug':
+        return <Debug />;
       default:
         return <TodoList />;
     }

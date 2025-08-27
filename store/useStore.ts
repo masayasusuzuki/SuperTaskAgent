@@ -1,17 +1,37 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { Task, Label, TaskFilter, SortOption } from '@/types';
+import { GoogleCalendar, GoogleCalendarEvent } from '@/lib/googleCalendar';
 import { storage } from '@/lib/storage';
+
+// デバッグ情報の型定義
+export interface DebugInfo {
+  id: string;
+  timestamp: Date;
+  type: 'google_calendar' | 'gantt_chart' | 'todo' | 'general';
+  title: string;
+  data: any;
+  status: 'success' | 'error' | 'info' | 'warning';
+}
 
 interface TaskStore {
   // State
   tasks: Task[];
   labels: Label[];
-  currentView: 'todo' | 'gantt' | 'stats' | 'settings';
+  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug';
   selectedLabel: string | null;
   filters: TaskFilter;
   sortBy: SortOption;
   sortOrder: 'asc' | 'desc';
+  
+  // Google Calendar State
+  googleAuthToken: string | null;
+  googleCalendars: GoogleCalendar[];
+  googleEvents: GoogleCalendarEvent[];
+
+  // Debug State
+  debugHistory: DebugInfo[];
+  maxDebugHistory: number;
 
   // Actions
   setTasks: (tasks: Task[]) => void;
@@ -24,11 +44,22 @@ interface TaskStore {
   updateLabel: (label: Label) => void;
   deleteLabel: (labelId: string) => void;
   
-  setCurrentView: (view: 'todo' | 'gantt' | 'stats' | 'settings') => void;
+  setCurrentView: (view: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug') => void;
   setSelectedLabel: (labelId: string | null) => void;
   setFilters: (filters: TaskFilter) => void;
   setSortBy: (sortBy: SortOption) => void;
   setSortOrder: (sortOrder: 'asc' | 'desc') => void;
+  
+  // Google Calendar Actions
+  setGoogleAuthToken: (token: string | null) => void;
+  setGoogleCalendars: (calendars: GoogleCalendar[]) => void;
+  setGoogleEvents: (events: GoogleCalendarEvent[]) => void;
+  toggleGoogleCalendar: (calendarId: string) => void;
+  
+  // Debug Actions
+  addDebugInfo: (info: Omit<DebugInfo, 'id' | 'timestamp'>) => void;
+  clearDebugHistory: () => void;
+  setMaxDebugHistory: (max: number) => void;
   
   // Computed
   getFilteredTasks: () => Task[];
@@ -69,6 +100,15 @@ export const useTaskStore = create<TaskStore>()(
       sortBy: 'dueDate',
       sortOrder: 'asc',
 
+      // Google Calendar State
+      googleAuthToken: null,
+      googleCalendars: [],
+      googleEvents: [],
+
+      // Debug State
+      debugHistory: [],
+      maxDebugHistory: 100,
+
       // Actions
       setTasks: (tasks) => set({ tasks }),
       addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
@@ -96,6 +136,31 @@ export const useTaskStore = create<TaskStore>()(
       setFilters: (filters) => set({ filters }),
       setSortBy: (sortBy) => set({ sortBy }),
       setSortOrder: (sortOrder) => set({ sortOrder }),
+
+      // Google Calendar Actions
+      setGoogleAuthToken: (token) => set({ googleAuthToken: token }),
+      setGoogleCalendars: (calendars) => set({ googleCalendars: calendars }),
+      setGoogleEvents: (events) => set({ googleEvents: events }),
+      toggleGoogleCalendar: (calendarId) => set((state) => ({
+        googleCalendars: state.googleCalendars.map(calendar =>
+          calendar.id === calendarId ? { ...calendar, isSelected: !calendar.isSelected } : calendar
+        )
+      })),
+
+      // Debug Actions
+      addDebugInfo: (info) => set((state) => {
+        const newDebugInfo = { ...info, id: Date.now().toString(), timestamp: new Date() };
+        const updatedHistory = [...state.debugHistory, newDebugInfo];
+        
+        // 最大履歴数を超えた場合は古いものから削除
+        if (updatedHistory.length > state.maxDebugHistory) {
+          updatedHistory.splice(0, updatedHistory.length - state.maxDebugHistory);
+        }
+        
+        return { debugHistory: updatedHistory };
+      }),
+      clearDebugHistory: () => set({ debugHistory: [] }),
+      setMaxDebugHistory: (max) => set({ maxDebugHistory: max }),
 
       // Computed
       getFilteredTasks: () => {

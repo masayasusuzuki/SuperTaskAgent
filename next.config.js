@@ -1,11 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // ブラウザ環境でのNode.jsモジュールの代替設定
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        net: false,
+        tls: false,
+        fs: false,
+        child_process: false,
+        http2: false,
+      };
+    }
+    return config;
+  },
   experimental: {
-    appDir: true,
+    serverComponentsExternalPackages: ['googleapis'],
   },
-  images: {
-    domains: [],
-  },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
