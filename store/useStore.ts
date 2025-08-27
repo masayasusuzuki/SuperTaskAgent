@@ -149,13 +149,27 @@ export const useTaskStore = create<TaskStore>()(
 
       // Google Calendar Actions
       setGoogleAuthToken: (token) => set({ googleAuthToken: token }),
+      setGoogleRefreshToken: (token) => set({ googleRefreshToken: token }),
+      setGoogleTokenExpiry: (expiry) => set({ googleTokenExpiry: expiry }),
       setGoogleCalendars: (calendars) => set({ googleCalendars: calendars }),
       setGoogleEvents: (events) => set({ googleEvents: events }),
       toggleGoogleCalendar: (calendarId) => set((state) => ({
         googleCalendars: state.googleCalendars.map(calendar =>
-          calendar.id === calendarId ? { ...calendar, isSelected: !calendar.isSelected } : calendar
+          calendar.id === calendarId ? { ...calendar, selected: !calendar.selected } : calendar
         )
       })),
+      refreshGoogleToken: async () => {
+        // リフレッシュトークンを使用して新しいアクセストークンを取得
+        // 実装は後で追加
+        return false;
+      },
+      clearGoogleAuth: () => set({
+        googleAuthToken: null,
+        googleRefreshToken: null,
+        googleTokenExpiry: null,
+        googleCalendars: [],
+        googleEvents: []
+      }),
 
       // Debug Actions
       addDebugInfo: (info) => set((state) => {
