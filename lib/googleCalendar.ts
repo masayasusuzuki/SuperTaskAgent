@@ -131,20 +131,35 @@ export class GoogleCalendarService {
       return (response.data.items || []).map(event => ({
         id: event.id!,
         summary: event.summary || 'タイトルなし',
-        description: event.description,
-        start: event.start!,
-        end: event.end!,
-        colorId: event.colorId,
-        organizer: event.organizer,
-        attendees: event.attendees
+        description: event.description || undefined,
+        start: {
+          dateTime: event.start?.dateTime || undefined,
+          date: event.start?.date || undefined
+        },
+        end: {
+          dateTime: event.end?.dateTime || undefined,
+          date: event.end?.date || undefined
+        },
+        colorId: event.colorId || undefined,
+        organizer: event.organizer ? {
+          email: event.organizer.email!,
+          displayName: event.organizer.displayName || undefined,
+          self: event.organizer.self || undefined
+        } : undefined,
+        attendees: event.attendees?.map((attendee: any) => ({
+          email: attendee.email!,
+          displayName: attendee.displayName || undefined,
+          responseStatus: attendee.responseStatus || undefined,
+          self: attendee.self || undefined
+        })) || undefined
       }));
     } catch (error) {
       console.error(`Error getting events for calendar ${calendarId}:`, error);
       
       // 権限エラーの詳細表示
-      if (error.code === 403) {
+      if (error && typeof error === 'object' && 'code' in error && (error as any).code === 403) {
         console.error('Permission denied for calendar:', calendarId);
-        console.error('Error details:', error.message);
+        console.error('Error details:', (error as any).message);
       }
       
       throw error;
