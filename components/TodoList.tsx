@@ -101,6 +101,10 @@ const TodoList: React.FC = () => {
     'on-hold': tasks.filter(t => t.status === 'on-hold').length
   };
 
+  const getLabelById = (id: string) => {
+    return labels.find(label => label.id === id);
+  };
+
   return (
     <div className="flex-1 flex flex-col h-screen overflow-hidden">
       <div className="flex justify-between items-center p-6 bg-white border-b border-gray-200">
@@ -213,14 +217,57 @@ const TodoList: React.FC = () => {
             <Button onClick={() => openTaskModal()}>最初のタスクを作成</Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {sortedTasks.map(task => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onEdit={() => openTaskModal(task)}
-              />
-            ))}
+          <div className="space-y-6">
+            {/* ラベルごとにグループ化 */}
+            {(() => {
+              // ラベルごとにタスクをグループ化
+              const tasksByLabel: { [key: string]: Task[] } = {};
+              
+              sortedTasks.forEach(task => {
+                const labelId = task.label || 'unlabeled';
+                if (!tasksByLabel[labelId]) {
+                  tasksByLabel[labelId] = [];
+                }
+                tasksByLabel[labelId].push(task);
+              });
+              
+              return Object.entries(tasksByLabel).map(([labelId, labelTasks]) => {
+                const label = getLabelById(labelId);
+                const labelName = label ? label.name : (labelId === 'unlabeled' ? '未分類' : `ラベル${labelId}`);
+                
+                return (
+                  <div key={labelId} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+                    {/* ラベルヘッダー */}
+                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                      <div className="flex items-center gap-2">
+                        {label && (
+                          <div 
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: label.color }}
+                          />
+                        )}
+                        <span className="text-sm font-medium text-gray-700">
+                          {labelName} ({labelTasks.length}件)
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* タスク一覧 */}
+                    <div className="p-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {labelTasks.map(task => (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            onEdit={() => openTaskModal(task)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         )}
       </div>

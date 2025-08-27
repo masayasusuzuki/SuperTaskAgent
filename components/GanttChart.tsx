@@ -384,97 +384,121 @@ export default function GanttChart() {
 
           {/* ガントチャート本体 */}
           <div className="bg-white">
-            {/* すべてのタスクを個別の行に表示 */}
-            {tasks.filter(task => 
-              task && 
-              task.id && 
-              task.title && 
-              task.startDate &&
-              task.dueDate
-            ).map((task, index) => {
-              const position = getTaskPosition(task);
-              const isOverdue = task.dueDate < new Date() && task.status !== 'completed';
-              const label = getLabelById(task.label);
-              
-              // デバッグ情報を出力
-              console.log(`Rendering task: ${task.title}`, {
-                label: task.label,
-                position,
-                isVisible: position.visible,
-                startDate: task.startDate,
-                dueDate: task.dueDate,
-                currentMonth: currentDate.getMonth(),
-                taskStartMonth: new Date(task.startDate).getMonth(),
-                taskDueMonth: new Date(task.dueDate).getMonth()
+            {/* ラベルごとにグループ化して、各グループ内で締め切りが近い順に表示 */}
+            {Object.entries(tasksByLabel).map(([labelId, labelTasks]) => {
+              // 各ラベル内で締め切りが近い順にソート
+              const sortedTasks = labelTasks
+                .filter(task => 
+                  task && 
+                  task.id && 
+                  task.title && 
+                  task.startDate &&
+                  task.dueDate
+                )
+                .sort((a, b) => {
+                  // 締め切りが近い順にソート
+                  const aDueDate = new Date(a.dueDate);
+                  const bDueDate = new Date(b.dueDate);
+                  return aDueDate.getTime() - bDueDate.getTime();
+                });
+
+              // 表示範囲内のタスクのみフィルタリング
+              const visibleTasks = sortedTasks.filter(task => {
+                const position = getTaskPosition(task);
+                return position.visible;
               });
-              
-              // タスクが表示範囲と重複する場合のみ表示
-              if (!position.visible) {
-                console.log(`Task ${task.title} is not visible - skipping`);
-                return null;
-              }
-              
+
+              if (visibleTasks.length === 0) return null;
+
+              const label = getLabelById(labelId);
+              const labelName = label ? label.name : (labelId === 'unlabeled' ? '未分類' : `ラベル${labelId}`);
+
               return (
-                <div key={task.id} className={cn(
-                  "border-b border-gray-100",
-                  task.status === 'completed' && "bg-green-50"
-                )}>
-                  {/* タスク行（固定高さ） */}
-                  <div className="flex h-8">
-                    {/* タスク名とラベル表示 */}
-                    <div className={cn(
-                      "w-48 border-r border-gray-200 px-3 flex items-center justify-between",
-                      task.status === 'completed' ? "bg-green-100" : "bg-gray-50"
-                    )}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        {label && (
-                          <div 
-                            className="w-3 h-3 rounded-full flex-shrink-0"
-                            style={{ backgroundColor: label.color }}
-                          />
-                        )}
-                        <span className={cn(
-                          "text-sm font-medium truncate",
-                          task.status === 'completed' ? "text-green-800" : "text-gray-900"
-                        )} title={task.title}>
-                          {task.title}
-                          {task.status === 'completed' && (
-                            <span className="text-xs text-green-600 ml-1">✓</span>
-                          )}
-                        </span>
-                      </div>
-                      <div className="text-xs text-gray-500 flex-shrink-0">
-                        {task.progress}%
-                      </div>
-                    </div>
-                    
-                    {/* ガントチャート部分 */}
-                    <div className="flex-1 relative min-w-0">
-                      {/* グリッド線 */}
-                      <div className="absolute inset-0 flex">
-                        {days.map((_, dayIndex) => (
-                          <div key={dayIndex} className="flex-1 border-r border-gray-100" />
-                        ))}
-                      </div>
-                      
-                      {/* タスクバー */}
-                      <div
-                        className={cn(
-                          "absolute top-1 bottom-1 rounded-md flex items-center px-2 text-xs text-white font-medium cursor-pointer transition-all duration-200 hover:shadow-md",
-                          isOverdue && "ring-2 ring-red-500"
-                        )}
-                        style={{
-                          left: position.left,
-                          width: position.width,
-                          backgroundColor: label?.color || '#6B7280',
-                          opacity: task.status === 'completed' ? 0.7 : 1
-                        }}
-                        title={`${task.title} (${task.progress}%)`}
-                      >
-                        <span className="truncate">{task.title}</span>
-                      </div>
+                <div key={labelId} className="border-b border-gray-200">
+                  {/* ラベルヘッダー */}
+                  <div className="bg-gray-100 px-3 py-2 border-b border-gray-200">
+                    <div className="flex items-center gap-2">
+                      {label && (
+                        <div 
+                          className="w-4 h-4 rounded-full"
+                          style={{ backgroundColor: label.color }}
+                        />
+                      )}
+                      <span className="text-sm font-medium text-gray-700">
+                        {labelName} ({visibleTasks.length}件)
+                      </span>
                     </div>
                   </div>
+
+                  {/* タスク一覧 */}
+                  {visibleTasks.map((task) => {
+                    const position = getTaskPosition(task);
+                    const isOverdue = task.dueDate < new Date() && task.status !== 'completed';
+                    
+                    return (
+                      <div key={task.id} className={cn(
+                        "border-b border-gray-100",
+                        task.status === 'completed' && "bg-green-50"
+                      )}>
+                        {/* タスク行（固定高さ） */}
+                        <div className="flex h-8">
+                          {/* タスク名とラベル表示 */}
+                          <div className={cn(
+                            "w-48 border-r border-gray-200 px-3 flex items-center justify-between",
+                            task.status === 'completed' ? "bg-green-100" : "bg-gray-50"
+                          )}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              {label && (
+                                <div 
+                                  className="w-3 h-3 rounded-full flex-shrink-0"
+                                  style={{ backgroundColor: label.color }}
+                                />
+                              )}
+                              <span className={cn(
+                                "text-sm font-medium truncate",
+                                task.status === 'completed' ? "text-green-800" : "text-gray-900"
+                              )} title={task.title}>
+                                {task.title}
+                                {task.status === 'completed' && (
+                                  <span className="text-xs text-green-600 ml-1">✓</span>
+                                )}
+                              </span>
+                            </div>
+                            <div className="text-xs text-gray-500 flex-shrink-0">
+                              {task.progress}%
+                            </div>
+                          </div>
+                          
+                          {/* ガントチャート部分 */}
+                          <div className="flex-1 relative min-w-0">
+                            {/* グリッド線 */}
+                            <div className="absolute inset-0 flex">
+                              {days.map((_, dayIndex) => (
+                                <div key={dayIndex} className="flex-1 border-r border-gray-100" />
+                              ))}
+                            </div>
+                            
+                            {/* タスクバー */}
+                            <div
+                              className={cn(
+                                "absolute top-1 bottom-1 rounded-md flex items-center px-2 text-xs text-white font-medium cursor-pointer transition-all duration-200 hover:shadow-md",
+                                isOverdue && "ring-2 ring-red-500"
+                              )}
+                              style={{
+                                left: position.left,
+                                width: position.width,
+                                backgroundColor: label?.color || '#6B7280',
+                                opacity: task.status === 'completed' ? 0.7 : 1
+                              }}
+                              title={`${task.title} (${task.progress}%)`}
+                            >
+                              <span className="truncate">{task.title}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}

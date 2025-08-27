@@ -6,6 +6,8 @@ import Sidebar from '@/components/Sidebar';
 import TodoList from '@/components/TodoList';
 import GanttChart from '@/components/GanttChart';
 import Calendar from '@/components/Calendar';
+import Goals from '@/components/Goals';
+import DailyInput from '@/components/DailyInput';
 import Stats from '@/components/Stats';
 import CompletedTasks from '@/components/CompletedTasks';
 import Settings from '@/components/Settings';
@@ -61,6 +63,10 @@ export default function Home() {
         return <GanttChart />;
       case 'calendar':
         return <Calendar />;
+      case 'goals':
+        return <Goals />;
+      case 'daily-input':
+        return <DailyInput />;
       case 'stats':
         return <Stats />;
       case 'completed':

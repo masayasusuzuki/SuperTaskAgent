@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { List, BarChart3, Settings, Plus, Tag, Calendar, Bug, CheckCircle } from 'lucide-react';
+import { List, BarChart3, Settings, Plus, Tag, Calendar, Bug, CheckCircle, Target, CalendarDays, PieChart } from 'lucide-react';
 import { useTaskStore } from '@/store/useStore';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -19,10 +19,12 @@ const Sidebar: React.FC = () => {
     { id: 'todo', label: 'Todo一覧', icon: List },
     { id: 'gantt', label: 'ガントチャート', icon: BarChart3 },
     { id: 'calendar', label: 'カレンダー', icon: Calendar },
+    { id: 'goals', label: '目標', icon: Target },
+    { id: 'daily-input', label: '日次入力', icon: CalendarDays },
     { id: 'completed', label: '完了', icon: CheckCircle },
-    { id: 'stats', label: '統計・レポート', icon: BarChart3 },
-    { id: 'settings', label: '設定', icon: Settings },
-    { id: 'debug', label: 'デバッグ', icon: Bug }
+    { id: 'debug', label: 'デバッグ', icon: Bug },
+    { id: 'stats', label: '統計・レポート', icon: PieChart },
+    { id: 'settings', label: '設定', icon: Settings }
   ] as const;
 
   return (

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Task, Label, TaskFilter, SortOption } from '@/types';
+import { Task, Label, TaskFilter, SortOption, Goal, DailyRecord, GoalProgress, GoalType } from '@/types';
 import { GoogleCalendar, GoogleCalendarEvent } from '@/lib/googleCalendar';
 import { storage } from '@/lib/storage';
 
@@ -18,7 +18,7 @@ interface TaskStore {
   // State
   tasks: Task[];
   labels: Label[];
-  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed';
+  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed' | 'goals' | 'daily-input';
   selectedLabel: string | null;
   filters: TaskFilter;
   sortBy: SortOption;
@@ -35,6 +35,10 @@ interface TaskStore {
   debugHistory: DebugInfo[];
   maxDebugHistory: number;
 
+  // Goal Management State
+  goals: Goal[];
+  dailyRecords: DailyRecord[];
+
   // Actions
   setTasks: (tasks: Task[]) => void;
   addTask: (task: Task) => void;
@@ -46,7 +50,7 @@ interface TaskStore {
   updateLabel: (label: Label) => void;
   deleteLabel: (labelId: string) => void;
   
-  setCurrentView: (view: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed') => void;
+  setCurrentView: (view: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed' | 'goals' | 'daily-input') => void;
   setSelectedLabel: (labelId: string | null) => void;
   setFilters: (filters: TaskFilter) => void;
   setSortBy: (sortBy: SortOption) => void;
@@ -67,11 +71,25 @@ interface TaskStore {
   clearDebugHistory: () => void;
   setMaxDebugHistory: (max: number) => void;
   
+  // Goal Management Actions
+  setGoals: (goals: Goal[]) => void;
+  addGoal: (goal: Goal) => void;
+  updateGoal: (goal: Goal) => void;
+  deleteGoal: (goalId: string) => void;
+  setDailyRecords: (records: DailyRecord[]) => void;
+  addDailyRecord: (record: DailyRecord) => void;
+  updateDailyRecord: (record: DailyRecord) => void;
+  deleteDailyRecord: (recordId: string) => void;
+  
   // Computed
   getFilteredTasks: () => Task[];
   getCompletedTasks: () => Task[];
   getCompletedTasksByDate: () => { [key: string]: Task[] };
   getLabelById: (id: string) => Label | undefined;
+  getGoalsByMonth: (yearMonth: string) => Goal[];
+  getDailyRecordsByDate: (date: string) => DailyRecord[];
+  getGoalProgress: (goalId: string, yearMonth: string) => GoalProgress | null;
+  getCurrentMonthGoals: () => Goal[];
 }
 
 // デフォルトラベル
@@ -118,6 +136,10 @@ export const useTaskStore = create<TaskStore>()(
       // Debug State
       debugHistory: [],
       maxDebugHistory: 100,
+
+      // Goal Management State
+      goals: [],
+      dailyRecords: [],
 
       // Actions
       setTasks: (tasks) => set({ tasks }),
@@ -185,6 +207,24 @@ export const useTaskStore = create<TaskStore>()(
       }),
       clearDebugHistory: () => set({ debugHistory: [] }),
       setMaxDebugHistory: (max) => set({ maxDebugHistory: max }),
+
+      // Goal Management Actions
+      setGoals: (goals) => set({ goals }),
+      addGoal: (goal) => set((state) => ({ goals: [...state.goals, goal] })),
+      updateGoal: (goal) => set((state) => ({
+        goals: state.goals.map(g => g.id === goal.id ? goal : g)
+      })),
+      deleteGoal: (goalId) => set((state) => ({
+        goals: state.goals.filter(g => g.id !== goalId)
+      })),
+      setDailyRecords: (records) => set({ dailyRecords: records }),
+      addDailyRecord: (record) => set((state) => ({ dailyRecords: [...state.dailyRecords, record] })),
+      updateDailyRecord: (record) => set((state) => ({
+        dailyRecords: state.dailyRecords.map(r => r.id === record.id ? record : r)
+      })),
+      deleteDailyRecord: (recordId) => set((state) => ({
+        dailyRecords: state.dailyRecords.filter(r => r.id !== recordId)
+      })),
 
       // Computed
       getFilteredTasks: () => {
@@ -265,6 +305,61 @@ export const useTaskStore = create<TaskStore>()(
         const { labels } = get();
         return labels.find(label => label.id === id);
       },
+
+      // Goal Management Computed
+      getGoalsByMonth: (yearMonth) => {
+        const { goals } = get();
+        return goals.filter(goal => goal.yearMonth === yearMonth);
+      },
+
+      getDailyRecordsByDate: (date) => {
+        const { dailyRecords } = get();
+        return dailyRecords.filter(record => record.date === date);
+      },
+
+      getGoalProgress: (goalId, yearMonth) => {
+        const { goals, dailyRecords } = get();
+        const goal = goals.find(g => g.id === goalId);
+        if (!goal) return null;
+
+        // 指定月の日次記録を取得
+        const monthRecords = dailyRecords.filter(record => {
+          const recordYearMonth = record.date.substring(0, 7); // YYYY-MM部分を取得
+          return recordYearMonth === yearMonth && record.goalId === goalId;
+        });
+
+        // 現在の値を計算
+        const currentValue = monthRecords.reduce((sum, record) => sum + record.value, 0);
+        
+        // 進捗率を計算
+        const progressPercentage = goal.targetValue > 0 ? (currentValue / goal.targetValue) * 100 : 0;
+        
+        // 残り日数を計算
+        const today = new Date();
+        const year = parseInt(yearMonth.split('-')[0]);
+        const month = parseInt(yearMonth.split('-')[1]);
+        const lastDayOfMonth = new Date(year, month, 0).getDate();
+        const remainingDays = Math.max(0, lastDayOfMonth - today.getDate());
+
+        return {
+          goalId: goal.id,
+          goalName: goal.name,
+          goalType: goal.type,
+          targetValue: goal.targetValue,
+          currentValue: currentValue,
+          unit: goal.unit,
+          progressPercentage: progressPercentage,
+          isOverdue: progressPercentage < 100 && remainingDays === 0,
+          remainingDays: remainingDays
+        };
+      },
+
+      getCurrentMonthGoals: () => {
+        const { goals } = get();
+        const currentDate = new Date();
+        const yearMonth = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
+        return goals.filter(goal => goal.yearMonth === yearMonth);
+      },
     }),
     {
       name: 'task-management-storage',
@@ -280,6 +375,8 @@ export const useTaskStore = create<TaskStore>()(
         googleEvents: state.googleEvents,
         debugHistory: state.debugHistory,
         maxDebugHistory: state.maxDebugHistory,
+        goals: state.goals,
+        dailyRecords: state.dailyRecords,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
@@ -329,6 +426,28 @@ export const useTaskStore = create<TaskStore>()(
           if (!state.googleEvents) state.googleEvents = [];
           if (!state.debugHistory) state.debugHistory = [];
           if (!state.maxDebugHistory) state.maxDebugHistory = 100;
+          
+          // 目標関連のデータを初期化（存在しない場合）
+          if (!state.goals) state.goals = [];
+          if (!state.dailyRecords) state.dailyRecords = [];
+          
+          // 目標データを正しく復元
+          if (state.goals && Array.isArray(state.goals)) {
+            state.goals = state.goals.map((goal: any) => ({
+              ...goal,
+              createdAt: new Date(goal.createdAt),
+              updatedAt: new Date(goal.updatedAt)
+            }));
+          }
+          
+          // 日次記録データを正しく復元
+          if (state.dailyRecords && Array.isArray(state.dailyRecords)) {
+            state.dailyRecords = state.dailyRecords.map((record: any) => ({
+              ...record,
+              createdAt: new Date(record.createdAt),
+              updatedAt: new Date(record.updatedAt)
+            }));
+          }
           
           // デバッグ履歴のtimestampを正しく復元
           if (state.debugHistory && Array.isArray(state.debugHistory)) {

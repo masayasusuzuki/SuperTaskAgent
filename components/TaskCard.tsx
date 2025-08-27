@@ -83,7 +83,56 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
     const statuses: Task['status'][] = ['not-started', 'in-progress', 'completed', 'on-hold'];
     const currentIndex = statuses.indexOf(task.status);
     const nextIndex = (currentIndex + 1) % statuses.length;
-    updateTask({ ...task, status: statuses[nextIndex] });
+    const newStatus = statuses[nextIndex];
+    
+    // タスクを更新
+    const updatedTask = { 
+      ...task, 
+      status: newStatus,
+      completedAt: newStatus === 'completed' ? new Date() : undefined
+    };
+    updateTask(updatedTask);
+    
+    // タスクが完了状態になった場合、目標の進捗を自動更新
+    if (newStatus === 'completed') {
+      updateGoalProgressFromTask(updatedTask);
+    }
+  };
+
+  // タスク完了時に目標の進捗を自動更新
+  const updateGoalProgressFromTask = (completedTask: Task) => {
+    const { getCurrentMonthGoals, getDailyRecordsByDate, addDailyRecord, updateDailyRecord } = useTaskStore.getState();
+    const currentGoals = getCurrentMonthGoals();
+    
+    // タスク系の目標を探す
+    const taskGoals = currentGoals.filter(goal => goal.type === 'task');
+    
+    if (taskGoals.length > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      const todayRecords = getDailyRecordsByDate(today);
+      
+      // 各タスク系目標に対して完了タスク数を更新
+      taskGoals.forEach(goal => {
+        const existingRecord = todayRecords.find(record => record.goalId === goal.id);
+        const currentValue = existingRecord?.value || 0;
+        
+        const recordData = {
+          id: existingRecord?.id || Date.now().toString() + goal.id,
+          date: today,
+          goalId: goal.id,
+          value: currentValue + 1, // 完了タスク数を1増やす
+          notes: `タスク完了: ${completedTask.title}`,
+          createdAt: existingRecord?.createdAt || new Date(),
+          updatedAt: new Date()
+        };
+        
+        if (existingRecord) {
+          updateDailyRecord(recordData);
+        } else {
+          addDailyRecord(recordData);
+        }
+      });
+    }
   };
 
   const handleProgressChange = (progress: number) => {
@@ -106,7 +155,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
           <h3 className="text-lg font-semibold text-gray-900 mb-1">{task.title}</h3>
           {isOverdue && (
             <span className="inline-block px-2 py-1 bg-red-100 text-red-800 text-xs font-semibold rounded">
-              期限超過
+              締切
             </span>
           )}
         </div>
