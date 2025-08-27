@@ -5,11 +5,19 @@ import { useRouter } from 'next/navigation';
 import { googleCalendarClientService } from '@/lib/googleCalendarClient';
 import { useTaskStore } from '@/store/useStore';
 
+interface DebugInfo {
+  code?: string;
+  error?: string;
+  url?: string;
+  tokens?: string;
+  calendars?: number;
+}
+
 export default function AuthCallbackPage() {
   const router = useRouter();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
-  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [debugInfo, setDebugInfo] = useState<DebugInfo>({});
   const { setGoogleAuthToken, setGoogleCalendars, addDebugInfo } = useTaskStore();
 
   useEffect(() => {
@@ -64,7 +72,7 @@ export default function AuthCallbackPage() {
         const tokens = await googleCalendarClientService.getTokensFromCode(code);
         console.log('Tokens received:', tokens);
         
-        setDebugInfo(prev => ({ ...prev, tokens: tokens ? '取得成功' : '取得失敗' }));
+        setDebugInfo((prev: DebugInfo) => ({ ...prev, tokens: tokens ? '取得成功' : '取得失敗' }));
         
         if (tokens.access_token) {
           // トークンを保存
@@ -76,7 +84,7 @@ export default function AuthCallbackPage() {
           console.log('Calendars received:', calendars);
           
           setGoogleCalendars(calendars);
-          setDebugInfo(prev => ({ ...prev, calendars: calendars.length }));
+          setDebugInfo((prev: DebugInfo) => ({ ...prev, calendars: calendars.length }));
           
           setStatus('success');
           setMessage('Googleカレンダーとの連携が完了しました');

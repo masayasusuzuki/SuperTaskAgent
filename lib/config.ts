@@ -32,8 +32,6 @@ export const getGoogleCalendarConfig = () => {
   return {
     clientId: getEnvVar('GOOGLE_CLIENT_ID'),
     clientSecret: getEnvVar('GOOGLE_CLIENT_SECRET'),
-    redirectUri: getEnvVar('GOOGLE_REDIRECT_URI'),
-    nextAuthUrl: getEnvVar('NEXTAUTH_URL'),
-    nextAuthSecret: getEnvVar('NEXTAUTH_SECRET')
+    redirectUri: getEnvVar('GOOGLE_REDIRECT_URI')
   };
 };
