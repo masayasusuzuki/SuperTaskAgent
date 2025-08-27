@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 export default function GanttChart() {
-  const { tasks, labels, getLabelById } = useTaskStore();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const { tasks, labels, getLabelById, googleEvents } = useTaskStore();
+  const [currentDate, setCurrentDate] = useState(new Date()); // 現在の日付を初期値に設定
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const [memo, setMemo] = useState('');
   const [isEditingMemo, setIsEditingMemo] = useState(false);
@@ -52,69 +52,216 @@ export default function GanttChart() {
 
   // 表示期間の計算（1ヶ月表示）
   const displayRange = useMemo(() => {
-    const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const end = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+    const year = currentDate.getFullYear();
+    const month = currentDate.getMonth();
+    const start = new Date(year, month, 1);
+    const end = new Date(year, month + 1, 0, 23, 59, 59, 999); // 月の最後の日の23:59:59
+    
+    console.log('Display range calculation:', {
+      currentDate: currentDate.toISOString(),
+      start: start.toISOString(),
+      end: end.toISOString(),
+      startDay: start.getDate(),
+      endDay: end.getDate(),
+      year,
+      month
+    });
+    
     return { start, end };
   }, [currentDate]);
 
   // 日の配列を生成
   const days = useMemo(() => {
-    return eachDayOfInterval(displayRange);
+    const daysArray = eachDayOfInterval(displayRange);
+    console.log('Days array generated:', {
+      length: daysArray.length,
+      firstDay: daysArray[0]?.toISOString(),
+      lastDay: daysArray[daysArray.length - 1]?.toISOString(),
+      sampleDays: daysArray.slice(0, 5).map(day => day.toISOString())
+    });
+    return daysArray;
   }, [displayRange]);
 
   // ラベルごとにタスクをグループ化（localStorageのデータを使用）
   const tasksByLabel = useMemo(() => {
     const grouped: { [key: string]: typeof tasks } = {};
     
+    // シンプルなタスクフィルタリング
+    const validTasks = tasks.filter(task => 
+      task && 
+      task.id && 
+      task.title && 
+      task.startDate &&
+      task.dueDate
+    );
+    
+    console.log('=== GANTT CHART TASK ANALYSIS ===');
+    console.log('Total tasks:', tasks.length);
+    console.log('Valid tasks:', validTasks.length);
+    console.log('Valid tasks details:', validTasks.map(t => ({ 
+      id: t.id, 
+      title: t.title, 
+      label: t.label, 
+      startDate: t.startDate, 
+      dueDate: t.dueDate
+    })));
+    
     // デフォルトラベル（本業、副業、プライベート）を優先
     const defaultLabels = ['1', '2', '3']; // 本業、副業、プライベートのID
     
     defaultLabels.forEach(labelId => {
-      grouped[labelId] = tasks.filter(task => task.label === labelId);
+      grouped[labelId] = validTasks.filter(task => task.label === labelId);
+      console.log(`Tasks for label ${labelId}:`, grouped[labelId].map(t => t.title));
     });
     
     // その他のラベル
     labels.forEach(label => {
       if (!defaultLabels.includes(label.id)) {
-        grouped[label.id] = tasks.filter(task => task.label === label.id);
+        grouped[label.id] = validTasks.filter(task => task.label === label.id);
+        console.log(`Tasks for label ${label.id}:`, grouped[label.id].map(t => t.title));
       }
     });
 
     // ラベルが設定されていないタスクを「未分類」として表示
-    const unlabeledTasks = tasks.filter(task => !task.label || task.label === '');
+    const unlabeledTasks = validTasks.filter(task => !task.label || task.label === '');
     if (unlabeledTasks.length > 0) {
       grouped['unlabeled'] = unlabeledTasks;
+      console.log('Unlabeled tasks:', unlabeledTasks.map(t => t.title));
     }
     
+    console.log('Final grouped tasks:', grouped);
     return grouped;
   }, [tasks, labels]);
 
   // タスクの位置と幅を計算（localStorageの日付データを使用）
   const getTaskPosition = (task: any) => {
-    const startDate = task.startDate instanceof Date ? task.startDate : new Date(task.startDate);
-    const dueDate = task.dueDate instanceof Date ? task.dueDate : new Date(task.dueDate);
+    // 日付データの詳細デバッグ
+    console.log(`=== Task Position Calculation for: ${task.title} ===`);
+    console.log('Raw task data:', {
+      id: task.id,
+      title: task.title,
+      startDate: task.startDate,
+      dueDate: task.dueDate,
+      startDateType: typeof task.startDate,
+      dueDateType: typeof task.dueDate,
+      startDateIsDate: task.startDate instanceof Date,
+      dueDateIsDate: task.dueDate instanceof Date
+    });
+    
+    // 日付を正しく解析（時間部分を無視して日付のみで比較）
+    const parseDate = (dateInput: any) => {
+      if (dateInput instanceof Date) {
+        return new Date(dateInput.getFullYear(), dateInput.getMonth(), dateInput.getDate());
+      }
+      // 文字列の場合は、ISO形式またはその他の形式を処理
+      const date = new Date(dateInput);
+      return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    };
+    
+    const startDate = parseDate(task.startDate);
+    const dueDate = parseDate(task.dueDate);
+    
+    console.log('Parsed dates:', {
+      startDate: startDate.toISOString(),
+      dueDate: dueDate.toISOString(),
+      startDateValid: !isNaN(startDate.getTime()),
+      dueDateValid: !isNaN(dueDate.getTime())
+    });
     
     const totalDays = days.length;
-    
-    // 表示範囲内でのタスクの開始日と終了日を計算
     const displayStart = displayRange.start;
     const displayEnd = displayRange.end;
     
-    // タスクの実際の開始日と終了日を表示範囲内に制限
-    const taskStartInRange = startDate < displayStart ? displayStart : startDate;
-    const taskEndInRange = dueDate > displayEnd ? displayEnd : dueDate;
+    console.log('Display range:', {
+      displayStart: displayStart.toISOString(),
+      displayEnd: displayEnd.toISOString(),
+      totalDays
+    });
     
-    // 表示範囲内でのインデックスを計算
-    const taskStartIndex = days.findIndex(day => isSameDay(day, taskStartInRange));
-    const taskEndIndex = days.findIndex(day => isSameDay(day, taskEndInRange));
+    // タスクが表示範囲と重複するかチェック（日付のみで比較）
+    const displayStartDate = new Date(displayStart.getFullYear(), displayStart.getMonth(), displayStart.getDate());
+    const displayEndDate = new Date(displayEnd.getFullYear(), displayEnd.getMonth(), displayEnd.getDate());
+    
+    // より柔軟な範囲チェック：前後1ヶ月のタスクも表示
+    const extendedStartDate = new Date(displayStartDate);
+    extendedStartDate.setMonth(extendedStartDate.getMonth() - 1);
+    const extendedEndDate = new Date(displayEndDate);
+    extendedEndDate.setMonth(extendedEndDate.getMonth() + 1);
+    
+    const isOutsideRange = dueDate < extendedStartDate || startDate > extendedEndDate;
+    console.log('Range check:', {
+      dueDateBeforeStart: dueDate < extendedStartDate,
+      startDateAfterEnd: startDate > extendedEndDate,
+      isOutsideRange,
+      startDate: startDate.toISOString(),
+      dueDate: dueDate.toISOString(),
+      displayStartDate: displayStartDate.toISOString(),
+      displayEndDate: displayEndDate.toISOString(),
+      extendedStartDate: extendedStartDate.toISOString(),
+      extendedEndDate: extendedEndDate.toISOString()
+    });
+    
+    if (isOutsideRange) {
+      console.log('Task is outside display range - hiding');
+      return { left: '0%', width: '0%', visible: false };
+    }
+    
+    // 表示範囲内でのタスクの開始日と終了日を計算
+    const taskStartInRange = startDate < displayStartDate ? displayStartDate : startDate;
+    const taskEndInRange = dueDate > displayEndDate ? displayEndDate : dueDate;
+    
+    // タスクが拡張範囲内にある場合のみ表示
+    if (taskStartInRange > extendedEndDate || taskEndInRange < extendedStartDate) {
+      console.log('Task is outside extended range - hiding');
+      return { left: '0%', width: '0%', visible: false };
+    }
+    
+    console.log('Task range in display:', {
+      taskStartInRange: taskStartInRange.toISOString(),
+      taskEndInRange: taskEndInRange.toISOString()
+    });
+    
+    // 表示範囲内でのインデックスを計算（日付のみで比較）
+    const taskStartIndex = days.findIndex(day => {
+      const dayDate = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+      return dayDate.getTime() === taskStartInRange.getTime();
+    });
+    
+    const taskEndIndex = days.findIndex(day => {
+      const dayDate = new Date(day.getFullYear(), day.getMonth(), day.getDate());
+      return dayDate.getTime() === taskEndInRange.getTime();
+    });
+    
+    console.log('Day indices:', {
+      taskStartIndex,
+      taskEndIndex,
+      daysLength: days.length,
+      firstDay: days[0]?.toISOString(),
+      lastDay: days[days.length - 1]?.toISOString()
+    });
+    
+    // 詳細な日付比較デバッグ
+    console.log('Detailed date comparison:', {
+      taskStartInRange: taskStartInRange.toISOString(),
+      taskEndInRange: taskEndInRange.toISOString(),
+      daysSample: days.slice(0, 5).map(day => day.toISOString()),
+      daysSampleEnd: days.slice(-5).map(day => day.toISOString())
+    });
     
     // タスクが表示範囲と重複しない場合は非表示
-    if (taskStartIndex === -1 || taskEndIndex === -1 || taskEndInRange < displayStart || taskStartInRange > displayEnd) {
+    if (taskStartIndex === -1 || taskEndIndex === -1) {
+      console.log('Task indices are invalid - hiding');
       return { left: '0%', width: '0%', visible: false };
     }
     
     const left = Math.max(0, (taskStartIndex / totalDays) * 100);
     const width = Math.max(1, ((taskEndIndex - taskStartIndex + 1) / totalDays) * 100);
+    
+    console.log('Final position:', {
+      left: `${left}%`,
+      width: `${width}%`,
+      visible: true
+    });
     
     return { left: `${left}%`, width: `${width}%`, visible: true };
   };
@@ -163,7 +310,7 @@ export default function GanttChart() {
   }
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col h-screen overflow-hidden">
       {/* ヘッダー */}
       <div className="flex justify-between items-center p-6 bg-white border-b border-gray-200">
         <div>
@@ -173,6 +320,7 @@ export default function GanttChart() {
           </p>
           <p className="text-xs text-gray-500 mt-1">
             表示中のタスク: {tasks.length}件 / ラベル: {labels.length}件
+            <span className="text-green-600 ml-2">✓ 完了タスクは緑色で表示</span>
           </p>
         </div>
         
@@ -191,11 +339,16 @@ export default function GanttChart() {
       </div>
 
       {/* ガントチャート本体 */}
-      <div className="flex-1 overflow-auto">
-        <div className="w-full max-w-none">
+      <div className="flex-1 overflow-auto min-w-0">
+        <div className="w-full max-w-none min-w-0">
           {/* 時間軸ヘッダー */}
           <div className="sticky top-0 bg-white border-b border-gray-200 z-10">
             <div className="flex">
+              {/* タスク名ヘッダー */}
+              <div className="w-48 bg-gray-50 border-r border-gray-200 px-3 flex items-center">
+                <span className="text-sm font-medium text-gray-700">タスク名</span>
+              </div>
+              
               {/* 日付軸 */}
               <div className="flex-1 flex">
                 {days.map((day, index) => {
@@ -213,13 +366,14 @@ export default function GanttChart() {
                       )}
                     >
                       <div className={cn(
-                        "h-6 flex items-center justify-center text-xs",
+                        "h-10 flex flex-col items-center justify-center text-xs leading-tight",
                         isToday(day) && "text-gray-700",
                         isSaturday && "text-blue-700 font-medium",
                         isSunday && "text-red-700 font-medium",
                         !isToday(day) && !isSaturday && !isSunday && "text-gray-700"
                       )}>
-                        {format(day, 'M/d(E)', { locale: ja })}
+                        <div>{format(day, 'M/d', { locale: ja })}</div>
+                        <div className="text-xs">{format(day, 'E', { locale: ja })}</div>
                       </div>
                     </div>
                   );
@@ -230,53 +384,97 @@ export default function GanttChart() {
 
           {/* ガントチャート本体 */}
           <div className="bg-white">
-            {/* デフォルトラベル行を常に表示 */}
-            {['1', '2', '3'].map((labelId) => {
-              const label = getLabelById(labelId);
-              if (!label) return null;
+            {/* すべてのタスクを個別の行に表示 */}
+            {tasks.filter(task => 
+              task && 
+              task.id && 
+              task.title && 
+              task.startDate &&
+              task.dueDate
+            ).map((task, index) => {
+              const position = getTaskPosition(task);
+              const isOverdue = task.dueDate < new Date() && task.status !== 'completed';
+              const label = getLabelById(task.label);
               
-              const labelTasks = tasksByLabel[labelId] || [];
+              // デバッグ情報を出力
+              console.log(`Rendering task: ${task.title}`, {
+                label: task.label,
+                position,
+                isVisible: position.visible,
+                startDate: task.startDate,
+                dueDate: task.dueDate,
+                currentMonth: currentDate.getMonth(),
+                taskStartMonth: new Date(task.startDate).getMonth(),
+                taskDueMonth: new Date(task.dueDate).getMonth()
+              });
+              
+              // タスクが表示範囲と重複する場合のみ表示
+              if (!position.visible) {
+                console.log(`Task ${task.title} is not visible - skipping`);
+                return null;
+              }
               
               return (
-                <div key={labelId} className="border-b border-gray-100">
-                  {/* タスク行 */}
-                  {labelTasks.map((task) => {
-                    const position = getTaskPosition(task);
-                    const isOverdue = task.dueDate < new Date() && task.status !== 'completed';
-                    
-                    // タスクが表示範囲と重複する場合のみ表示
-                    if (!position.visible) return null;
-                    
-                    return (
-                      <div key={task.id} className="flex h-8">
-                        <div className="flex-1 relative min-w-0">
-                          {/* グリッド線 */}
-                          <div className="absolute inset-0 flex">
-                            {days.map((_, index) => (
-                              <div key={index} className="flex-1 border-r border-gray-100" />
-                            ))}
-                          </div>
-                          
-                          {/* ガントバー */}
-                          <div
-                            className={cn(
-                              "absolute top-0 bottom-0 rounded-md flex items-center px-2 text-xs text-white font-medium cursor-pointer transition-all duration-200 hover:shadow-md",
-                              isOverdue && "ring-2 ring-red-500"
-                            )}
-                            style={{
-                              left: position.left,
-                              width: position.width,
-                              backgroundColor: label.color,
-                              opacity: task.status === 'completed' ? 0.7 : 1
-                            }}
-                            title={`${task.title} (${task.progress}%)`}
-                          >
-                            <span className="truncate">{task.title}</span>
-                          </div>
-                        </div>
+                <div key={task.id} className={cn(
+                  "border-b border-gray-100",
+                  task.status === 'completed' && "bg-green-50"
+                )}>
+                  {/* タスク行（固定高さ） */}
+                  <div className="flex h-8">
+                    {/* タスク名とラベル表示 */}
+                    <div className={cn(
+                      "w-48 border-r border-gray-200 px-3 flex items-center justify-between",
+                      task.status === 'completed' ? "bg-green-100" : "bg-gray-50"
+                    )}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        {label && (
+                          <div 
+                            className="w-3 h-3 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: label.color }}
+                          />
+                        )}
+                        <span className={cn(
+                          "text-sm font-medium truncate",
+                          task.status === 'completed' ? "text-green-800" : "text-gray-900"
+                        )} title={task.title}>
+                          {task.title}
+                          {task.status === 'completed' && (
+                            <span className="text-xs text-green-600 ml-1">✓</span>
+                          )}
+                        </span>
                       </div>
-                    );
-                  })}
+                      <div className="text-xs text-gray-500 flex-shrink-0">
+                        {task.progress}%
+                      </div>
+                    </div>
+                    
+                    {/* ガントチャート部分 */}
+                    <div className="flex-1 relative min-w-0">
+                      {/* グリッド線 */}
+                      <div className="absolute inset-0 flex">
+                        {days.map((_, dayIndex) => (
+                          <div key={dayIndex} className="flex-1 border-r border-gray-100" />
+                        ))}
+                      </div>
+                      
+                      {/* タスクバー */}
+                      <div
+                        className={cn(
+                          "absolute top-1 bottom-1 rounded-md flex items-center px-2 text-xs text-white font-medium cursor-pointer transition-all duration-200 hover:shadow-md",
+                          isOverdue && "ring-2 ring-red-500"
+                        )}
+                        style={{
+                          left: position.left,
+                          width: position.width,
+                          backgroundColor: label?.color || '#6B7280',
+                          opacity: task.status === 'completed' ? 0.7 : 1
+                        }}
+                        title={`${task.title} (${task.progress}%)`}
+                      >
+                        <span className="truncate">{task.title}</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -285,6 +483,10 @@ export default function GanttChart() {
             {Array.from({ length: 20 }, (_, index) => (
               <div key={`empty-${index}`} className="border-b border-gray-100">
                 <div className="flex h-6">
+                  {/* タスク名列の空セル */}
+                  <div className="w-48 bg-gray-50 border-r border-gray-200"></div>
+                  
+                  {/* ガントチャート部分の空セル */}
                   <div className="flex-1 relative min-w-0">
                     {/* グリッド線 */}
                     <div className="absolute inset-0 flex">

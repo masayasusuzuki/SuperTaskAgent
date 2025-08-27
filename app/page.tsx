@@ -7,6 +7,7 @@ import TodoList from '@/components/TodoList';
 import GanttChart from '@/components/GanttChart';
 import Calendar from '@/components/Calendar';
 import Stats from '@/components/Stats';
+import CompletedTasks from '@/components/CompletedTasks';
 import Settings from '@/components/Settings';
 import Debug from '@/components/Debug';
 import { storage } from '@/lib/storage';
@@ -62,6 +63,8 @@ export default function Home() {
         return <Calendar />;
       case 'stats':
         return <Stats />;
+      case 'completed':
+        return <CompletedTasks />;
       case 'settings':
         return <Settings />;
       case 'debug':
@@ -86,7 +89,7 @@ export default function Home() {
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col min-w-0">
         {renderCurrentView()}
       </main>
     </div>

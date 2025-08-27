@@ -28,6 +28,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
     progress: 0
   });
 
+  const [isAllDay, setIsAllDay] = useState(false);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -42,6 +44,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
         dueDate: task.dueDate,
         progress: task.progress
       });
+      
+      // 開始日と終了日が同じ場合は終日チェックを有効にする
+      const startDateStr = task.startDate.toISOString().split('T')[0];
+      const dueDateStr = task.dueDate.toISOString().split('T')[0];
+      setIsAllDay(startDateStr === dueDateStr);
     }
   }, [task]);
 
@@ -71,7 +78,9 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
       id: task?.id || uuidv4(),
       ...formData,
       createdAt: task?.createdAt || new Date(),
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      // 完了状態になった場合、完了日時を設定
+      completedAt: formData.status === 'completed' ? new Date() : task?.completedAt
     };
 
     if (task) {
@@ -94,6 +103,19 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
   const handleDateChange = (field: 'startDate' | 'dueDate', value: string) => {
     const date = new Date(value);
     handleInputChange(field, date);
+    
+    // 終日チェックが有効な場合、開始日を変更したら終了日も同じ日に設定
+    if (field === 'startDate' && isAllDay) {
+      handleInputChange('dueDate', date);
+    }
+  };
+
+  const handleAllDayChange = (checked: boolean) => {
+    setIsAllDay(checked);
+    if (checked) {
+      // 終日チェックが有効になった場合、終了日を開始日と同じ日に設定
+      handleInputChange('dueDate', formData.startDate);
+    }
   };
 
   return (
@@ -226,6 +248,25 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
                 <p className="mt-1 text-sm text-red-600">{errors.dueDate}</p>
               )}
             </div>
+          </div>
+
+          {/* 終日チェックボックス */}
+          <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <input
+              id="allDay"
+              type="checkbox"
+              checked={isAllDay}
+              onChange={(e) => handleAllDayChange(e.target.checked)}
+              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="allDay" className="text-sm font-medium text-gray-700">
+              終日タスク（その日中に完了）
+            </label>
+            {isAllDay && (
+              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                開始日と同じ日に設定されます
+              </span>
+            )}
           </div>
 
           <div>

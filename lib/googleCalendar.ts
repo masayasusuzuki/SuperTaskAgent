@@ -94,7 +94,7 @@ export class GoogleCalendarService {
         description: cal.description,
         backgroundColor: cal.backgroundColor,
         foregroundColor: cal.foregroundColor,
-        selected: cal.primary || false, // プライマリカレンダーはデフォルトで選択
+        selected: true, // すべてのカレンダーをデフォルトで選択
         accessRole: cal.accessRole,
         primary: cal.primary
       }));

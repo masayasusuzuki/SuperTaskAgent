@@ -18,7 +18,7 @@ interface TaskStore {
   // State
   tasks: Task[];
   labels: Label[];
-  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug';
+  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed';
   selectedLabel: string | null;
   filters: TaskFilter;
   sortBy: SortOption;
@@ -26,6 +26,8 @@ interface TaskStore {
   
   // Google Calendar State
   googleAuthToken: string | null;
+  googleRefreshToken: string | null;
+  googleTokenExpiry: number | null;
   googleCalendars: GoogleCalendar[];
   googleEvents: GoogleCalendarEvent[];
 
@@ -44,7 +46,7 @@ interface TaskStore {
   updateLabel: (label: Label) => void;
   deleteLabel: (labelId: string) => void;
   
-  setCurrentView: (view: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug') => void;
+  setCurrentView: (view: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed') => void;
   setSelectedLabel: (labelId: string | null) => void;
   setFilters: (filters: TaskFilter) => void;
   setSortBy: (sortBy: SortOption) => void;
@@ -52,9 +54,13 @@ interface TaskStore {
   
   // Google Calendar Actions
   setGoogleAuthToken: (token: string | null) => void;
+  setGoogleRefreshToken: (token: string | null) => void;
+  setGoogleTokenExpiry: (expiry: number | null) => void;
   setGoogleCalendars: (calendars: GoogleCalendar[]) => void;
   setGoogleEvents: (events: GoogleCalendarEvent[]) => void;
   toggleGoogleCalendar: (calendarId: string) => void;
+  refreshGoogleToken: () => Promise<boolean>;
+  clearGoogleAuth: () => void;
   
   // Debug Actions
   addDebugInfo: (info: Omit<DebugInfo, 'id' | 'timestamp'>) => void;
@@ -102,6 +108,8 @@ export const useTaskStore = create<TaskStore>()(
 
       // Google Calendar State
       googleAuthToken: null,
+      googleRefreshToken: null,
+      googleTokenExpiry: null,
       googleCalendars: [],
       googleEvents: [],
 
@@ -167,6 +175,9 @@ export const useTaskStore = create<TaskStore>()(
         const { tasks, filters, selectedLabel } = get();
         let filtered = tasks;
 
+        // 完了タスクを除外（完了ページで管理するため）
+        filtered = filtered.filter(task => task.status !== 'completed');
+
         // Label filter
         if (selectedLabel) {
           filtered = filtered.filter(task => task.label === selectedLabel);
@@ -193,6 +204,47 @@ export const useTaskStore = create<TaskStore>()(
         return filtered;
       },
 
+      // 完了タスクを取得
+      getCompletedTasks: () => {
+        const { tasks } = get();
+        return tasks.filter(task => 
+          task.status === 'completed' && 
+          task.completedAt && 
+          (task.completedAt instanceof Date || typeof task.completedAt === 'string')
+        );
+      },
+
+      // 完了タスクを日付別にグループ化
+      getCompletedTasksByDate: () => {
+        const completedTasks = get().getCompletedTasks();
+        const grouped: { [key: string]: Task[] } = {};
+
+        completedTasks.forEach(task => {
+          // completedAtが文字列の場合はDateオブジェクトに変換
+          const completedAt = task.completedAt instanceof Date 
+            ? task.completedAt 
+            : new Date(task.completedAt!);
+          
+          const dateKey = completedAt.toISOString().split('T')[0]; // YYYY-MM-DD形式
+          if (!grouped[dateKey]) {
+            grouped[dateKey] = [];
+          }
+          grouped[dateKey].push(task);
+        });
+
+        // 日付順にソート（新しい日付が上）
+        return Object.entries(grouped)
+          .sort(([a], [b]) => b.localeCompare(a))
+          .reduce((acc, [date, tasks]) => {
+            acc[date] = tasks.sort((a, b) => {
+              const aDate = a.completedAt instanceof Date ? a.completedAt : new Date(a.completedAt!);
+              const bDate = b.completedAt instanceof Date ? b.completedAt : new Date(b.completedAt!);
+              return bDate.getTime() - aDate.getTime();
+            });
+            return acc;
+          }, {} as { [key: string]: Task[] });
+      },
+
       getLabelById: (id) => {
         const { labels } = get();
         return labels.find(label => label.id === id);
@@ -207,26 +259,67 @@ export const useTaskStore = create<TaskStore>()(
         filters: state.filters,
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,
+        googleAuthToken: state.googleAuthToken,
+        googleCalendars: state.googleCalendars,
+        googleEvents: state.googleEvents,
+        debugHistory: state.debugHistory,
+        maxDebugHistory: state.maxDebugHistory,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // Dateオブジェクトを正しく復元
-          state.tasks = state.tasks.map((task: any) => ({
-            ...task,
-            startDate: new Date(task.startDate),
-            dueDate: new Date(task.dueDate),
-            createdAt: new Date(task.createdAt),
-            updatedAt: new Date(task.updatedAt)
-          }));
+          // タスクのみを正しく復元（Googleカレンダーイベントは除外）
+          if (state.tasks && Array.isArray(state.tasks)) {
+            state.tasks = state.tasks
+              .filter((task: any) => 
+                task && 
+                task.id && 
+                task.title && 
+                task.status && 
+                task.priority !== undefined &&
+                task.progress !== undefined &&
+                task.startDate &&
+                task.dueDate &&
+                task.createdAt &&
+                task.updatedAt
+              )
+              .map((task: any) => ({
+                ...task,
+                startDate: new Date(task.startDate),
+                dueDate: new Date(task.dueDate),
+                createdAt: new Date(task.createdAt),
+                updatedAt: new Date(task.updatedAt),
+                completedAt: task.completedAt ? 
+                  (task.completedAt instanceof Date ? task.completedAt : new Date(task.completedAt)) : 
+                  undefined
+              }));
+          }
           
-          state.labels = state.labels.map((label: any) => ({
-            ...label,
-            createdAt: new Date(label.createdAt)
-          }));
+          // ラベルを正しく復元
+          if (state.labels && Array.isArray(state.labels)) {
+            state.labels = state.labels.map((label: any) => ({
+              ...label,
+              createdAt: new Date(label.createdAt)
+            }));
+          }
 
           // ラベルが空の場合はデフォルトラベルを設定
-          if (state.labels.length === 0) {
+          if (!state.labels || state.labels.length === 0) {
             state.labels = getDefaultLabels();
+          }
+
+          // Googleカレンダー関連のデータを初期化（存在しない場合）
+          if (!state.googleAuthToken) state.googleAuthToken = null;
+          if (!state.googleCalendars) state.googleCalendars = [];
+          if (!state.googleEvents) state.googleEvents = [];
+          if (!state.debugHistory) state.debugHistory = [];
+          if (!state.maxDebugHistory) state.maxDebugHistory = 100;
+          
+          // デバッグ履歴のtimestampを正しく復元
+          if (state.debugHistory && Array.isArray(state.debugHistory)) {
+            state.debugHistory = state.debugHistory.map((debugInfo: any) => ({
+              ...debugInfo,
+              timestamp: new Date(debugInfo.timestamp)
+            }));
           }
         }
       },

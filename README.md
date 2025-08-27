@@ -14,20 +14,22 @@
 ### 📊 ガントチャート機能
 - **視覚的表示**: タスクの期間をタイムラインで表示
 - **進捗可視化**: 各タスクの進捗率を色で表現
-- **期間変更**: ドラッグ&ドロップでタスク期間を調整
-- **週・月表示**: 表示期間の切り替え
+- **月表示**: 月単位での表示期間
+- **タスク別表示**: 各タスクを独立した行に表示
+- **ラベル色分け**: ラベルごとの色分け表示
+- **メモ機能**: ガントチャート専用のメモエリア
 
 ### 📈 統計・レポート機能
 - **基本統計**: 総タスク数、完了率、平均進捗
 - **状態別統計**: 未着手・進行中・完了・保留の分布
 - **優先度別統計**: 優先度ごとのタスク数
 - **ラベル別統計**: カテゴリごとの進捗状況
-- **週間進捗**: 今週の日別進捗チャート
 
 ### ⚙️ 設定機能
-- **ラベル管理**: カスタムラベルの作成・編集・削除
+- **ラベル管理**: 本業・副業・プライベートの基本ラベル
 - **データエクスポート**: JSON形式でのデータ出力
 - **データインポート**: バックアップからの復元
+- **Google Calendar連携**: Google Calendarとの同期機能
 
 ## 技術スタック
 
@@ -74,18 +76,20 @@ npm start
 - 進捗率を設定（0-100%）
 
 ### 2. ラベルの管理
-- サイドバーの「+」ボタンでラベルを追加
-- 設定画面でラベルの編集・削除が可能
+- 本業・副業・プライベートの基本ラベルが自動で設定
+- サイドバーでラベルによるフィルタリングが可能
 
 ### 3. ガントチャートの活用
 - ガントチャートタブでタスクの期間を確認
-- 週表示・月表示を切り替えて全体像を把握
+- 月表示で全体像を把握
+- 各タスクが独立した行に表示され、重複なし
 - 進捗率の色で完了状況を確認
+- メモ機能でガントチャート専用のメモを記録
 
 ### 4. 統計の確認
 - 統計・レポートタブで各種分析を確認
 - ラベル別の進捗状況を把握
-- 週間の生産性をチェック
+- タスクの状態分布を確認
 
 ## データ管理
 
@@ -143,24 +147,38 @@ npm run lint     # ESLint実行
 
 ```
 todoapplication/
-├── app/                 # Next.js App Router
-│   ├── globals.css     # グローバルスタイル
-│   ├── layout.tsx      # ルートレイアウト
-│   └── page.tsx        # メインページ
-├── components/         # Reactコンポーネント
-│   ├── ui/            # UIコンポーネント
-│   ├── Sidebar.tsx    # サイドバー
-│   ├── TodoList.tsx   # Todo一覧
-│   ├── TaskCard.tsx   # タスクカード
-│   └── TaskModal.tsx  # タスクモーダル
-├── lib/               # ユーティリティ
-│   ├── utils.ts       # 共通ユーティリティ
-│   └── storage.ts     # ストレージ管理
-├── store/             # 状態管理
-│   └── useStore.ts    # Zustandストア
-├── types/             # TypeScript型定義
-│   └── index.ts       # 型定義
-└── public/            # 静的ファイル
+├── app/                    # Next.js App Router
+│   ├── api/               # API Routes
+│   │   └── google-calendar/
+│   ├── auth/              # 認証関連
+│   ├── globals.css        # グローバルスタイル
+│   ├── layout.tsx         # ルートレイアウト
+│   └── page.tsx           # メインページ
+├── components/            # Reactコンポーネント
+│   ├── ui/               # UIコンポーネント
+│   ├── Calendar.tsx      # カレンダー表示
+│   ├── CalendarEventModal.tsx
+│   ├── Debug.tsx         # デバッグ画面
+│   ├── GanttChart.tsx    # ガントチャート
+│   ├── Settings.tsx      # 設定画面
+│   ├── Sidebar.tsx       # サイドバー
+│   ├── Stats.tsx         # 統計画面
+│   ├── TaskCard.tsx      # タスクカード
+│   ├── TaskModal.tsx     # タスクモーダル
+│   └── TodoList.tsx      # Todo一覧
+├── config/               # 設定ファイル
+│   └── google-calendar-config.js
+├── lib/                  # ユーティリティ
+│   ├── config.ts         # 設定管理
+│   ├── googleCalendar.ts # Google Calendar連携
+│   ├── googleCalendarClient.ts
+│   ├── storage.ts        # ストレージ管理
+│   └── utils.ts          # 共通ユーティリティ
+├── store/                # 状態管理
+│   └── useStore.ts       # Zustandストア
+├── types/                # TypeScript型定義
+│   └── index.ts          # 型定義
+└── public/               # 静的ファイル
 ```
 
 ## ライセンス

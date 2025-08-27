@@ -10,6 +10,7 @@ export interface Task {
   progress: number; // 0-100
   createdAt: Date;
   updatedAt: Date;
+  completedAt?: Date; // 完了日時（完了時に設定）
 }
 
 export interface Label {
@@ -31,7 +32,7 @@ export type SortOption = 'dueDate' | 'createdAt' | 'priority' | 'title';
 export interface AppState {
   tasks: Task[];
   labels: Label[];
-  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug';
+  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed';
   filters: TaskFilter;
   sortBy: SortOption;
   sortOrder: 'asc' | 'desc';

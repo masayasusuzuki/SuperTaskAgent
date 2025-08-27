@@ -8,6 +8,7 @@ import { useTaskStore } from '@/store/useStore';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { googleCalendarClientService } from '@/lib/googleCalendarClient';
+import CalendarEventModal from './CalendarEventModal';
 
 export default function Calendar() {
   const { 
@@ -22,6 +23,8 @@ export default function Calendar() {
   } = useTaskStore();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isLoadingGoogleEvents, setIsLoadingGoogleEvents] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
 
   // 現在の月の日付範囲を計算
   const monthRange = useMemo(() => {
@@ -42,7 +45,9 @@ export default function Calendar() {
         const timeMin = monthRange.start.toISOString();
         const timeMax = monthRange.end.toISOString();
         
-        const calendarIds = googleCalendars.map(cal => cal.id);
+        const calendarIds = googleCalendars
+          .filter(cal => cal.selected)
+          .map(cal => cal.id);
 
         const eventsData = await googleCalendarClientService.getMultipleCalendarEvents(
           calendarIds,
@@ -54,6 +59,18 @@ export default function Calendar() {
         // すべてのイベントをフラット化
         const allEvents = eventsData.flatMap(({ events }) => events);
         setGoogleEvents(allEvents);
+        
+        // デバッグ情報をコンソールに出力
+        console.log('Google Calendar Events:', allEvents);
+        allEvents.forEach((event, index) => {
+          console.log(`Event ${index + 1}:`, {
+            summary: event.summary,
+            start: event.start,
+            end: event.end,
+            hasDateTime: !!event.start.dateTime,
+            hasDate: !!event.start.date
+          });
+        });
       } catch (error) {
         console.error('Error fetching Google events:', error);
       } finally {
@@ -97,22 +114,53 @@ export default function Calendar() {
   // 各日のGoogleカレンダーイベントを取得
   const getGoogleEventsForDay = (date: Date) => {
     return googleEvents.filter(event => {
-      const eventStart = event.start.dateTime ? new Date(event.start.dateTime) : new Date(event.start.date!);
-      const eventEnd = event.end.dateTime ? new Date(event.end.dateTime) : new Date(event.end.date!);
+      // 日付のみのイベントの場合
+      if (event.start.date && !event.start.dateTime) {
+        const eventDate = new Date(event.start.date);
+        const isMatch = isSameDay(date, eventDate);
+        if (isMatch) {
+          console.log(`Date-only event matched for ${format(date, 'yyyy-MM-dd')}:`, event.summary);
+        }
+        return isMatch;
+      }
       
-      return date >= eventStart && date <= eventEnd;
+      // 時間付きイベントの場合
+      if (event.start.dateTime) {
+        const eventStart = new Date(event.start.dateTime);
+        const eventEnd = event.end.dateTime ? new Date(event.end.dateTime) : new Date(event.start.dateTime);
+        
+        // 指定日の開始時刻と終了時刻
+        const dayStart = new Date(date);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(date);
+        dayEnd.setHours(23, 59, 59, 999);
+        
+        // イベントが指定日と重複するかチェック
+        const isMatch = eventStart <= dayEnd && eventEnd >= dayStart;
+        if (isMatch) {
+          console.log(`Time-based event matched for ${format(date, 'yyyy-MM-dd')}:`, {
+            summary: event.summary,
+            start: eventStart,
+            end: eventEnd,
+            dayStart,
+            dayEnd
+          });
+        }
+        return isMatch;
+      }
+      
+      return false;
     });
   };
 
-  // すべてのイベントを取得（タスク + Googleカレンダー）
+  // すべてのイベントを取得（Googleカレンダーのみ）
   const getAllEventsForDay = (date: Date) => {
-    const tasks = getTasksForDay(date);
     const googleEvents = getGoogleEventsForDay(date);
     
     return {
-      tasks,
+      tasks: [], // todoタスクは表示しない
       googleEvents,
-      total: tasks.length + googleEvents.length
+      total: googleEvents.length
     };
   };
 
@@ -127,6 +175,12 @@ export default function Calendar() {
 
   const goToToday = () => {
     setCurrentDate(new Date());
+  };
+
+  // 日付クリックハンドラー
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
+    setIsModalOpen(true);
   };
 
   // Googleカレンダー連携ページに移動
@@ -159,12 +213,10 @@ export default function Calendar() {
         </div>
         
         <div className="flex items-center gap-2">
-          {!googleAuthToken && (
-            <Button variant="outline" size="sm" onClick={goToGoogleAuth}>
-              <ExternalLink size={16} className="mr-2" />
-              Google連携
-            </Button>
-          )}
+          <Button variant="outline" size="sm" onClick={goToGoogleAuth}>
+            <ExternalLink size={16} className="mr-2" />
+            {googleAuthToken ? 'Google連携設定' : 'Google連携'}
+          </Button>
           <Button variant="outline" size="sm" onClick={goToPreviousMonth}>
             <ChevronLeft size={16} />
           </Button>
@@ -178,11 +230,30 @@ export default function Calendar() {
         </div>
       </div>
 
+      {/* Googleカレンダー選択（連携済みの場合のみ表示） */}
+      {googleAuthToken && googleCalendars.length > 0 && (
+        <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-700">表示するカレンダー:</span>
+            <div className="flex gap-2 flex-wrap">
+              {googleCalendars.map((calendar) => (
+                <label key={calendar.id} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={calendar.selected}
+                    onChange={() => toggleCalendarSelection(calendar.id)}
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">{calendar.summary}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* カレンダー本体 */}
       <div className="flex-1 overflow-auto p-6">
-
-
-
         <div className="h-full bg-white rounded-lg shadow-sm border flex flex-col">
           {/* 曜日ヘッダー */}
           <div className="grid grid-cols-7 border-b border-gray-200 flex-shrink-0">
@@ -214,38 +285,23 @@ export default function Calendar() {
                   )}
                 >
                   {/* 日付 */}
-                  <div className={cn(
-                    "text-sm font-medium mb-1 flex-shrink-0",
-                    isCurrentMonth ? "text-gray-900" : "text-gray-400",
-                    isTodayDate && "text-orange-600",
-                    isSaturday && isCurrentMonth && "text-blue-700",
-                    isSunday && isCurrentMonth && "text-red-700"
-                  )}>
+                  <div 
+                    className={cn(
+                      "text-sm font-medium mb-1 flex-shrink-0 cursor-pointer hover:bg-gray-100 rounded px-1 py-1 transition-colors",
+                      isCurrentMonth ? "text-gray-900" : "text-gray-400",
+                      isTodayDate && "text-orange-600",
+                      isSaturday && isCurrentMonth && "text-blue-700",
+                      isSunday && isCurrentMonth && "text-red-700"
+                    )}
+                    onClick={() => handleDateClick(day)}
+                  >
                     {format(day, 'd')}
                   </div>
 
                   {/* イベント */}
                   <div className="space-y-1 flex-1 overflow-y-auto">
-                    {/* タスク */}
-                    {dayEvents.tasks.slice(0, 2).map((task) => {
-                      const label = getLabelById(task.label);
-                      return (
-                        <div
-                          key={`task-${task.id}`}
-                          className="text-xs p-1 rounded truncate flex-shrink-0 border-l-2 border-blue-500"
-                          style={{
-                            backgroundColor: label?.color || '#6b7280',
-                            color: 'white'
-                          }}
-                          title={task.title}
-                        >
-                          {task.title}
-                        </div>
-                      );
-                    })}
-
                     {/* Googleカレンダーイベント */}
-                    {dayEvents.googleEvents.slice(0, 2).map((event) => {
+                    {dayEvents.googleEvents.slice(0, 3).map((event) => {
                       // 自分が主催者かどうかを判定
                       const isOrganizer = event.organizer?.self === true;
                       // 自分が参加者かどうかを判定
@@ -278,6 +334,22 @@ export default function Calendar() {
                         }
                         return title;
                       };
+
+                      const formatTime = (dateTime: string) => {
+                        return format(new Date(dateTime), 'HH:mm', { locale: ja });
+                      };
+
+                      const getTimeDisplay = () => {
+                        if (event.start.dateTime) {
+                          const startTime = formatTime(event.start.dateTime);
+                          if (event.end.dateTime) {
+                            const endTime = formatTime(event.end.dateTime);
+                            return `${startTime}-${endTime}`;
+                          }
+                          return startTime;
+                        }
+                        return '';
+                      };
                       
                       return (
                         <div
@@ -285,15 +357,22 @@ export default function Calendar() {
                           className={`text-xs p-1 rounded truncate flex-shrink-0 ${getEventStyle()}`}
                           title={getEventTitle()}
                         >
-                          {event.summary}
+                          <div className="flex items-center space-x-1">
+                            {event.start.dateTime && (
+                              <span className="text-xs opacity-75 font-mono">
+                                {getTimeDisplay()}
+                              </span>
+                            )}
+                            <span className="truncate">{event.summary}</span>
+                          </div>
                         </div>
                       );
                     })}
 
                     {/* イベント数表示 */}
-                    {dayEvents.total > 4 && (
+                    {dayEvents.total > 3 && (
                       <div className="text-xs text-gray-500 flex-shrink-0">
-                        +{dayEvents.total - 4}件
+                        +{dayEvents.total - 3}件
                       </div>
                     )}
                   </div>
@@ -303,6 +382,15 @@ export default function Calendar() {
           </div>
         </div>
       </div>
+
+      {/* イベント詳細モーダル */}
+      <CalendarEventModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        selectedDate={selectedDate}
+        events={selectedDate ? getAllEventsForDay(selectedDate) : { tasks: [], googleEvents: [] }}
+        getLabelById={getLabelById}
+      />
     </div>
   );
 }

@@ -120,16 +120,17 @@ const TodoList: React.FC = () => {
               進行中
             </span>
             <span className="flex items-center gap-1">
-              <span className="w-5 h-5 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">
-                {statusCounts['completed']}
-              </span>
-              完了
-            </span>
-            <span className="flex items-center gap-1">
               <span className="w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                 {statusCounts['on-hold']}
               </span>
               保留
+            </span>
+            <span className="flex items-center gap-1 text-green-600">
+              <span className="w-5 h-5 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">
+                {statusCounts['completed']}
+              </span>
+              完了
+              <span className="text-xs text-gray-400 ml-1">(完了ページ)</span>
             </span>
           </div>
         </div>
@@ -164,7 +165,6 @@ const TodoList: React.FC = () => {
               <option value="">すべて</option>
               <option value="not-started">未着手</option>
               <option value="in-progress">進行中</option>
-              <option value="completed">完了</option>
               <option value="on-hold">保留</option>
             </Select>
           </div>

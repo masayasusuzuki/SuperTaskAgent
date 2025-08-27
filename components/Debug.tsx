@@ -184,7 +184,7 @@ export default function Debug() {
                     </span>
                   </div>
                   <span className="text-xs text-gray-500">
-                    {format(info.timestamp, 'yyyy/MM/dd HH:mm:ss', { locale: ja })}
+                    {format(new Date(info.timestamp), 'yyyy/MM/dd HH:mm:ss', { locale: ja })}
                   </span>
                 </div>
 
