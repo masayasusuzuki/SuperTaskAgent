@@ -91,12 +91,12 @@ export class GoogleCalendarService {
       return (response.data.items || []).map(cal => ({
         id: cal.id!,
         summary: cal.summary!,
-        description: cal.description,
-        backgroundColor: cal.backgroundColor,
-        foregroundColor: cal.foregroundColor,
+        description: cal.description || undefined,
+        backgroundColor: cal.backgroundColor || undefined,
+        foregroundColor: cal.foregroundColor || undefined,
         selected: true, // すべてのカレンダーをデフォルトで選択
-        accessRole: cal.accessRole,
-        primary: cal.primary
+        accessRole: cal.accessRole || undefined,
+        primary: cal.primary || undefined
       }));
     } catch (error) {
       console.error('Error getting calendar list:', error);
