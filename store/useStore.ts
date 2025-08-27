@@ -69,6 +69,8 @@ interface TaskStore {
   
   // Computed
   getFilteredTasks: () => Task[];
+  getCompletedTasks: () => Task[];
+  getCompletedTasksByDate: () => { [key: string]: Task[] };
   getLabelById: (id: string) => Label | undefined;
 }
 
