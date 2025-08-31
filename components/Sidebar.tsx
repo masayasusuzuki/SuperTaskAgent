@@ -11,20 +11,27 @@ const Sidebar: React.FC = () => {
     labels,
     currentView,
     selectedLabel,
+    googleAuthToken,
+    googleCalendars,
     setCurrentView,
     setSelectedLabel,
   } = useTaskStore();
 
   const menuItems = [
-    { id: 'todo', label: 'Todo一覧', icon: List },
-    { id: 'gantt', label: 'ガントチャート', icon: BarChart3 },
-    { id: 'calendar', label: 'カレンダー', icon: Calendar },
-    { id: 'goals', label: '目標', icon: Target },
-    { id: 'daily-input', label: '日次入力', icon: CalendarDays },
-    { id: 'completed', label: '完了', icon: CheckCircle },
-    { id: 'debug', label: 'デバッグ', icon: Bug },
-    { id: 'stats', label: '統計・レポート', icon: PieChart },
-    { id: 'settings', label: '設定', icon: Settings }
+    { id: 'todo', label: 'Todo一覧', icon: List, badge: undefined },
+    { id: 'gantt', label: 'ガントチャート', icon: BarChart3, badge: undefined },
+    { 
+      id: 'calendar', 
+      label: 'カレンダー', 
+      icon: Calendar,
+      badge: googleAuthToken ? `${googleCalendars.length}連携` : undefined
+    },
+    { id: 'goals', label: '目標', icon: Target, badge: undefined },
+    { id: 'daily-input', label: '日次入力', icon: CalendarDays, badge: undefined },
+    { id: 'completed', label: '完了', icon: CheckCircle, badge: undefined },
+    { id: 'debug', label: 'デバッグ', icon: Bug, badge: undefined },
+    { id: 'stats', label: '統計・レポート', icon: PieChart, badge: undefined },
+    { id: 'settings', label: '設定', icon: Settings, badge: undefined }
   ] as const;
 
   return (
@@ -49,6 +56,11 @@ const Sidebar: React.FC = () => {
                 >
                   <Icon size={20} />
                   <span>{item.label}</span>
+                  {item.badge && (
+                    <span className="ml-auto text-xs bg-green-600 text-white px-2 py-1 rounded-full">
+                      {item.badge}
+                    </span>
+                  )}
                 </Button>
               </li>
             );

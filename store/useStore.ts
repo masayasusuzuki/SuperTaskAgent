@@ -371,6 +371,8 @@ export const useTaskStore = create<TaskStore>()(
         sortBy: state.sortBy,
         sortOrder: state.sortOrder,
         googleAuthToken: state.googleAuthToken,
+        googleRefreshToken: state.googleRefreshToken,
+        googleTokenExpiry: state.googleTokenExpiry,
         googleCalendars: state.googleCalendars,
         googleEvents: state.googleEvents,
         debugHistory: state.debugHistory,

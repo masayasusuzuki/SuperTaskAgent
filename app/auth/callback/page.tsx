@@ -18,7 +18,7 @@ export default function AuthCallbackPage() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('');
   const [debugInfo, setDebugInfo] = useState<DebugInfo>({});
-  const { setGoogleAuthToken, setGoogleCalendars, addDebugInfo } = useTaskStore();
+  const { setGoogleAuthToken, setGoogleRefreshToken, setGoogleTokenExpiry, setGoogleCalendars, addDebugInfo, setCurrentView } = useTaskStore();
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -77,6 +77,8 @@ export default function AuthCallbackPage() {
         if (tokens.access_token) {
           // トークンを保存
           setGoogleAuthToken(tokens.access_token);
+          setGoogleRefreshToken(tokens.refresh_token || null);
+          setGoogleTokenExpiry(tokens.expiry_date || null);
           
           // カレンダーリストを取得
           console.log('Getting calendar list...');
@@ -84,6 +86,9 @@ export default function AuthCallbackPage() {
           console.log('Calendars received:', calendars);
           
           setGoogleCalendars(calendars);
+          
+          // カレンダービューに切り替え
+          setCurrentView('calendar');
           setDebugInfo((prev: DebugInfo) => ({ ...prev, calendars: calendars.length }));
           
           setStatus('success');
@@ -100,9 +105,9 @@ export default function AuthCallbackPage() {
             status: 'success'
           });
           
-          // 3秒後にカレンダーページにリダイレクト
+          // 3秒後にホームページにリダイレクト
           setTimeout(() => {
-            router.push('/?view=calendar');
+            router.push('/');
           }, 3000);
         } else {
           setStatus('error');
@@ -130,7 +135,7 @@ export default function AuthCallbackPage() {
     };
 
     handleAuthCallback();
-  }, [router, setGoogleAuthToken, setGoogleCalendars, addDebugInfo]);
+  }, [router, setGoogleAuthToken, setGoogleRefreshToken, setGoogleTokenExpiry, setGoogleCalendars, addDebugInfo, setCurrentView]);
 
   return (
     <div className="flex-1 flex items-center justify-center">

@@ -20,8 +20,12 @@ export default function Home() {
     tasks,
     labels,
     currentView,
+    googleAuthToken,
+    googleRefreshToken,
+    googleTokenExpiry,
     setTasks,
     setLabels,
+    refreshGoogleToken,
   } = useTaskStore();
 
   // 初期データの読み込み（初回のみ）
@@ -40,6 +44,22 @@ export default function Home() {
       setIsInitialized(true);
     }
   }, [setTasks, setLabels]);
+
+  // Googleカレンダー認証情報のチェック
+  useEffect(() => {
+    if (isInitialized && googleAuthToken && googleRefreshToken) {
+      // トークンの有効期限をチェック
+      const now = Date.now();
+      const tokenExpiry = googleTokenExpiry || 0;
+      
+      // 有効期限が切れている、または1時間以内に切れる場合はリフレッシュ
+      if (tokenExpiry < now + 3600000) { // 1時間 = 3600000ms
+        refreshGoogleToken().catch(error => {
+          console.error('Failed to refresh Google token:', error);
+        });
+      }
+    }
+  }, [isInitialized, googleAuthToken, googleRefreshToken, googleTokenExpiry, refreshGoogleToken]);
 
   // データの保存
   useEffect(() => {
