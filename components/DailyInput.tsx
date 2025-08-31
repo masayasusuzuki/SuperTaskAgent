@@ -95,8 +95,41 @@ const DailyInput: React.FC = () => {
   };
 
   return (
-    <div className="p-4 md:p-6">
-      <div className="max-w-2xl mx-auto">
+    <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      {/* タイトル欄 */}
+      <div className="flex justify-between items-center p-6 bg-white border-b border-gray-200">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">日次入力</h1>
+          <div className="flex gap-4 text-sm text-gray-600">
+            <span className="flex items-center gap-1">
+              <span className="w-5 h-5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center">
+                {currentGoals.length}
+              </span>
+              設定目標数
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-5 h-5 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">
+                {currentGoals.filter(goal => {
+                  const progress = getGoalProgress(goal.id, `${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}`);
+                  return progress && progress.progressPercentage >= 100;
+                }).length}
+              </span>
+              完了目標数
+            </span>
+          </div>
+        </div>
+        <div className="text-sm text-gray-500">
+          {new Date().toLocaleDateString('ja-JP', { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            weekday: 'long'
+          })}
+        </div>
+      </div>
+
+      {/* コンテンツエリア */}
+      <div className="flex-1 overflow-y-auto p-4 md:p-6">
         {/* 今日の日付表示 */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <h2 className="text-lg font-semibold text-blue-900">

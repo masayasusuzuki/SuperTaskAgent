@@ -82,8 +82,37 @@ const Goals: React.FC = () => {
   };
 
   return (
-    <div className="p-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      {/* タイトル欄 */}
+      <div className="flex justify-between items-center p-6 bg-white border-b border-gray-200">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 mb-2">目標管理</h1>
+          <div className="flex gap-4 text-sm text-gray-600">
+            <span className="flex items-center gap-1">
+              <span className="w-5 h-5 bg-blue-500 text-white text-xs rounded-full flex items-center justify-center">
+                {currentGoals.length}
+              </span>
+              設定目標数
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-5 h-5 bg-green-500 text-white text-xs rounded-full flex items-center justify-center">
+                {currentGoals.filter(goal => {
+                  const progress = getGoalProgress(goal.id, yearMonth);
+                  return progress && progress.progressPercentage >= 100;
+                }).length}
+              </span>
+              完了目標数
+            </span>
+          </div>
+        </div>
+        <Button onClick={handleAddGoal}>
+          <Plus size={20} className="mr-2" />
+          目標追加
+        </Button>
+      </div>
+
+      {/* コンテンツエリア */}
+      <div className="flex-1 overflow-y-auto p-6">
         {/* 月末目標設定の注意書き */}
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
           <div className="flex items-start">

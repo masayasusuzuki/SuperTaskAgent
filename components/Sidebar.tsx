@@ -30,7 +30,7 @@ const Sidebar: React.FC = () => {
   return (
     <div className="w-72 h-screen bg-white border-r border-gray-200 flex flex-col overflow-y-auto flex-shrink-0">
       <div className="p-6 border-b border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-900">SuperTaskAgent</h2>
+        <h2 className="text-xl font-semibold text-gray-900">期日まもれる君</h2>
       </div>
 
       <nav className="flex-1 p-4">

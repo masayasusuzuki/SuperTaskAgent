@@ -5,8 +5,8 @@ import './globals.css'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'S.T.A',
-  description: '本業・副業・プライベートのタスクを一括管理できるアプリケーション',
+  title: '期日まもれる君',
+  description: '目標達成をサポートするタスク管理アプリケーション',
 }
 
 export default function RootLayout({
