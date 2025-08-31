@@ -33,7 +33,9 @@ const GoalModal: React.FC<GoalModalProps> = ({ isOpen, onClose, goal, yearMonth 
     { name: '読書冊数', type: 'habit' as GoalType, targetValue: 3, unit: '冊', description: 'ビジネス書、自己啓発書、専門書' },
     { name: '睡眠時間', type: 'habit' as GoalType, targetValue: 210, unit: '時間', description: '質の高い睡眠時間の確保（7時間/日）' },
     { name: '瞑想・マインドフルネス', type: 'habit' as GoalType, targetValue: 20, unit: '回', description: '毎日10-15分の瞑想習慣' },
-    { name: '創造的活動時間', type: 'time' as GoalType, targetValue: 15, unit: '時間', description: 'アイデア出し、企画、創作活動' }
+    { name: '創造的活動時間', type: 'time' as GoalType, targetValue: 15, unit: '時間', description: 'アイデア出し、企画、創作活動' },
+    { name: '副業収入', type: 'task' as GoalType, targetValue: 10, unit: '万円', description: '副業収入の日別計算(概算)' },
+    { name: '半日断食', type: 'habit' as GoalType, targetValue: 20, unit: '日', description: '半日断食を実行した回数' }
   ];
 
   useEffect(() => {
@@ -117,7 +119,7 @@ const GoalModal: React.FC<GoalModalProps> = ({ isOpen, onClose, goal, yearMonth 
           {/* テンプレート選択 */}
           <div>
             <h3 className="text-sm font-medium text-gray-700 mb-3">テンプレートから選択</h3>
-            <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+            <div className="grid grid-cols-2 gap-2">
               {defaultGoals.map((template, index) => (
                 <button
                   key={index}

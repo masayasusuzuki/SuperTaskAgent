@@ -105,35 +105,39 @@ const Goals: React.FC = () => {
             </span>
           </div>
         </div>
-        <Button onClick={handleAddGoal}>
-          <Plus size={20} className="mr-2" />
-          目標追加
-        </Button>
+        {currentGoals.length === 0 && (
+          <Button onClick={handleAddGoal}>
+            <Plus size={20} className="mr-2" />
+            目標を設定する
+          </Button>
+        )}
       </div>
 
       {/* コンテンツエリア */}
       <div className="flex-1 overflow-y-auto p-6">
-        {/* 月末目標設定の注意書き */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <div className="flex items-start">
-            <div className="flex-shrink-0">
-              <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">
-                重要: 月末に来月の目標を設定しましょう
-              </h3>
-              <div className="mt-2 text-sm text-yellow-700">
-                <p>
-                  毎月末に来月の目標を設定することで、計画的に目標達成を目指せます。
-                  サボり防止のため、必ず月末に設定してください！
-                </p>
+        {/* 月末目標設定の注意書き - 目標が設定されている場合のみ表示 */}
+        {currentGoals.length > 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">
+                  重要: 月末に来月の目標を設定しましょう
+                </h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <p>
+                    毎月末に来月の目標を設定することで、計画的に目標達成を目指せます。
+                    サボり防止のため、必ず月末に設定してください！
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* 月間サマリー */}
         {currentGoals.length > 0 && (
@@ -217,25 +221,32 @@ const Goals: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">
               {currentDate.getFullYear()}年{currentDate.getMonth() + 1}月の目標
             </h2>
-            <Button
-              onClick={handleAddGoal}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus size={16} className="mr-2" />
-              目標を追加
-            </Button>
+            {currentGoals.length > 0 && (
+              <Button
+                onClick={handleAddGoal}
+                variant="outline"
+                size="sm"
+              >
+                <Plus size={16} className="mr-2" />
+                追加
+              </Button>
+            )}
           </div>
           
           <div className="p-6">
             {currentGoals.length === 0 ? (
-              <div className="text-center py-8">
-                <p className="text-gray-500 mb-4">今月の目標が設定されていません</p>
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Target className="w-8 h-8 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">目標が設定されていません</h3>
+                <p className="text-gray-500 mb-6">今月の目標を設定して、計画的に目標達成を目指しましょう</p>
                 <Button
                   onClick={handleAddGoal}
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   <Plus size={16} className="mr-2" />
-                  目標を設定する
+                  最初の目標を設定する
                 </Button>
               </div>
             ) : (

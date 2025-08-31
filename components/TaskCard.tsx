@@ -17,6 +17,7 @@ interface TaskCardProps {
 const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
   const { updateTask, deleteTask, getLabelById } = useTaskStore();
   const [showMenu, setShowMenu] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const label = getLabelById(task.label);
   
@@ -215,15 +216,51 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
       </div>
 
       <div className="flex justify-between items-center mb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleStatusChange}
-          className="flex items-center gap-2 text-sm"
-        >
-          {getStatusIcon()}
-          <span>{getStatusText()}</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleStatusChange}
+            className="flex items-center gap-2 text-sm"
+          >
+            {getStatusIcon()}
+            <span>{getStatusText()}</span>
+          </Button>
+          
+          {/* 完了ボタン - 完了状態でない場合のみ表示 */}
+          {task.status !== 'completed' ? (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={async () => {
+                setIsCompleting(true);
+                const updatedTask = { 
+                  ...task, 
+                  status: 'completed' as const,
+                  progress: 100,
+                  completedAt: new Date()
+                };
+                updateTask(updatedTask);
+                updateGoalProgressFromTask(updatedTask);
+                
+                // 少し待ってから完了状態をリセット
+                setTimeout(() => {
+                  setIsCompleting(false);
+                }, 1000);
+              }}
+              disabled={isCompleting}
+              className="flex items-center gap-2 text-sm bg-green-600 hover:bg-green-700 text-white transition-all duration-200 hover:scale-105"
+                          >
+                <CheckCircle size={16} />
+                {isCompleting ? '完了中...' : '完了'}
+              </Button>
+          ) : (
+            <span className="flex items-center gap-2 text-sm text-green-600 font-medium">
+              <CheckCircle size={16} />
+              完了済み
+            </span>
+          )}
+        </div>
 
         <span
           className="px-2 py-1 text-xs font-semibold text-white rounded"
