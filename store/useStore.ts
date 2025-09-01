@@ -45,6 +45,7 @@ interface TaskStore {
   youtubeSearchQuery: string;
   youtubeCurrentVideo: YouTubeVideo | null;
   youtubeIsLoading: boolean;
+  youtubeNextPageToken: string | null;
 
   // Actions
   setTasks: (tasks: Task[]) => void;
@@ -107,8 +108,10 @@ interface TaskStore {
   setYouTubeSearchQuery: (query: string) => void;
   setYouTubeCurrentVideo: (video: YouTubeVideo | null) => void;
   setYouTubeIsLoading: (loading: boolean) => void;
-  searchYouTubeVideos: (query: string) => Promise<void>;
-  getPopularYouTubeVideos: () => Promise<void>;
+  setYouTubeNextPageToken: (token: string | null) => void;
+  searchYouTubeVideos: (query: string, videoDuration?: 'short' | 'medium' | 'long', append?: boolean) => Promise<void>;
+  getPopularYouTubeVideos: (videoDuration?: 'short' | 'medium' | 'long', append?: boolean) => Promise<void>;
+  loadMoreVideos: () => Promise<void>;
 }
 
 // デフォルトラベル
@@ -166,6 +169,7 @@ export const useTaskStore = create<TaskStore>()(
       youtubeSearchQuery: '',
       youtubeCurrentVideo: null,
       youtubeIsLoading: false,
+      youtubeNextPageToken: null,
 
       // Actions
       setTasks: (tasks) => set({ tasks }),
@@ -409,20 +413,28 @@ export const useTaskStore = create<TaskStore>()(
       setYouTubeSearchQuery: (query) => set({ youtubeSearchQuery: query }),
       setYouTubeCurrentVideo: (video) => set({ youtubeCurrentVideo: video }),
       setYouTubeIsLoading: (loading) => set({ youtubeIsLoading: loading }),
+      setYouTubeNextPageToken: (token) => set({ youtubeNextPageToken: token }),
       
-      searchYouTubeVideos: async (query) => {
-        const { setYouTubeVideos, setYouTubeIsLoading, addDebugInfo } = get();
+      searchYouTubeVideos: async (query, videoDuration, append = false) => {
+        const { setYouTubeVideos, setYouTubeIsLoading, setYouTubeNextPageToken, addDebugInfo, youtubeVideos, youtubeNextPageToken } = get();
         setYouTubeIsLoading(true);
         
         try {
           const { YouTubeAPI } = await import('@/lib/youtube');
-          const result = await YouTubeAPI.searchVideos(query);
-          setYouTubeVideos(result.videos);
+          const result = await YouTubeAPI.searchVideos(query, 20, append ? youtubeNextPageToken || undefined : undefined, videoDuration);
+          
+          if (append) {
+            setYouTubeVideos([...youtubeVideos, ...result.videos]);
+          } else {
+            setYouTubeVideos(result.videos);
+          }
+          
+          setYouTubeNextPageToken(result.nextPageToken || null);
           
           addDebugInfo({
             type: 'general',
             title: 'YouTube Search',
-            data: { query, results: result.videos.length },
+            data: { query, videoDuration, append, results: result.videos.length },
             status: 'success'
           });
         } catch (error) {
@@ -430,7 +442,7 @@ export const useTaskStore = create<TaskStore>()(
           addDebugInfo({
             type: 'general',
             title: 'YouTube Search Error',
-            data: { query, error: error instanceof Error ? error.message : String(error) },
+            data: { query, videoDuration, append, error: error instanceof Error ? error.message : String(error) },
             status: 'error'
           });
         } finally {
@@ -438,19 +450,26 @@ export const useTaskStore = create<TaskStore>()(
         }
       },
       
-      getPopularYouTubeVideos: async () => {
-        const { setYouTubeVideos, setYouTubeIsLoading, addDebugInfo } = get();
+      getPopularYouTubeVideos: async (videoDuration, append = false) => {
+        const { setYouTubeVideos, setYouTubeIsLoading, setYouTubeNextPageToken, addDebugInfo, youtubeVideos, youtubeNextPageToken } = get();
         setYouTubeIsLoading(true);
         
         try {
           const { YouTubeAPI } = await import('@/lib/youtube');
-          const result = await YouTubeAPI.getPopularVideos();
-          setYouTubeVideos(result.videos);
+          const result = await YouTubeAPI.getPopularVideos(undefined, 20, videoDuration);
+          
+          if (append) {
+            setYouTubeVideos([...youtubeVideos, ...result.videos]);
+          } else {
+            setYouTubeVideos(result.videos);
+          }
+          
+          setYouTubeNextPageToken(result.nextPageToken || null);
           
           addDebugInfo({
             type: 'general',
             title: 'YouTube Popular Videos',
-            data: { results: result.videos.length },
+            data: { videoDuration, append, results: result.videos.length },
             status: 'success'
           });
         } catch (error) {
@@ -458,12 +477,19 @@ export const useTaskStore = create<TaskStore>()(
           addDebugInfo({
             type: 'general',
             title: 'YouTube Popular Videos Error',
-            data: { error: error instanceof Error ? error.message : String(error) },
+            data: { videoDuration, append, error: error instanceof Error ? error.message : String(error) },
             status: 'error'
           });
         } finally {
           setYouTubeIsLoading(false);
         }
+      },
+
+      loadMoreVideos: async () => {
+        const { youtubeSearchQuery, searchYouTubeVideos, getPopularYouTubeVideos } = get();
+        
+        // 現在のタブと動画長フィルターは外部から渡す必要があるため、
+        // このメソッドは使用しない。代わりに直接searchYouTubeVideosやgetPopularYouTubeVideosを呼び出す
       },
     }),
     {
@@ -486,6 +512,7 @@ export const useTaskStore = create<TaskStore>()(
         dailyRecords: state.dailyRecords,
         youtubeVideos: state.youtubeVideos,
         youtubeFavorites: state.youtubeFavorites,
+        youtubeNextPageToken: state.youtubeNextPageToken,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
@@ -555,6 +582,14 @@ export const useTaskStore = create<TaskStore>()(
               ...record,
               createdAt: new Date(record.createdAt),
               updatedAt: new Date(record.updatedAt)
+            }));
+          }
+          
+          // YouTubeお気に入りデータを正しく復元
+          if (state.youtubeFavorites && Array.isArray(state.youtubeFavorites)) {
+            state.youtubeFavorites = state.youtubeFavorites.map((favorite: any) => ({
+              ...favorite,
+              addedAt: new Date(favorite.addedAt)
             }));
           }
           

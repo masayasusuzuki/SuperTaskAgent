@@ -14,6 +14,7 @@ const YouTube: React.FC = () => {
     youtubeSearchQuery,
     youtubeCurrentVideo,
     youtubeIsLoading,
+    youtubeNextPageToken,
     setYouTubeSearchQuery,
     setYouTubeCurrentVideo,
     searchYouTubeVideos,
@@ -24,19 +25,29 @@ const YouTube: React.FC = () => {
 
   const [searchInput, setSearchInput] = useState('');
   const [activeTab, setActiveTab] = useState<'search' | 'popular' | 'favorites' | 'player'>('search');
+  const [videoDuration, setVideoDuration] = useState<'short' | 'medium' | 'long' | undefined>(undefined);
 
   // 初期表示時に人気動画を取得
   useEffect(() => {
     if (youtubeVideos.length === 0) {
-      getPopularYouTubeVideos();
+      getPopularYouTubeVideos(videoDuration);
     }
   }, []);
+
+  // 動画長フィルター変更時に動画を再取得
+  useEffect(() => {
+    if (activeTab === 'popular') {
+      getPopularYouTubeVideos(videoDuration);
+    } else if (activeTab === 'search' && youtubeSearchQuery) {
+      searchYouTubeVideos(youtubeSearchQuery, videoDuration);
+    }
+  }, [videoDuration, activeTab]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchInput.trim()) {
       setYouTubeSearchQuery(searchInput);
-      searchYouTubeVideos(searchInput);
+      searchYouTubeVideos(searchInput, videoDuration);
       setActiveTab('search');
     }
   };
@@ -180,7 +191,12 @@ const YouTube: React.FC = () => {
       <div className="bg-white border-b border-gray-200">
         <div className="flex space-x-1 p-4">
           <button
-            onClick={() => setActiveTab('search')}
+            onClick={() => {
+              setActiveTab('search');
+              if (youtubeSearchQuery) {
+                searchYouTubeVideos(youtubeSearchQuery, videoDuration);
+              }
+            }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
               activeTab === 'search' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-gray-900'
             }`}
@@ -190,7 +206,7 @@ const YouTube: React.FC = () => {
           <button
             onClick={() => {
               setActiveTab('popular');
-              getPopularYouTubeVideos();
+              getPopularYouTubeVideos(videoDuration);
             }}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
               activeTab === 'popular' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-gray-900'
@@ -242,6 +258,77 @@ const YouTube: React.FC = () => {
         </div>
       )}
 
+      {/* 動画長フィルター */}
+      {(activeTab === 'search' || activeTab === 'popular') && (
+        <div className="bg-white border-b border-gray-200 p-4">
+          <div className="flex items-center gap-4">
+            <span className="text-sm font-medium text-gray-700">動画の長さ:</span>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => {
+                  setVideoDuration(undefined);
+                  if (activeTab === 'popular') {
+                    getPopularYouTubeVideos(undefined);
+                  } else if (activeTab === 'search' && youtubeSearchQuery) {
+                    searchYouTubeVideos(youtubeSearchQuery, undefined);
+                  }
+                }}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  videoDuration === undefined ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                すべて
+              </button>
+              <button
+                onClick={() => {
+                  setVideoDuration('short');
+                  if (activeTab === 'popular') {
+                    getPopularYouTubeVideos('short');
+                  } else if (activeTab === 'search' && youtubeSearchQuery) {
+                    searchYouTubeVideos(youtubeSearchQuery, 'short');
+                  }
+                }}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  videoDuration === 'short' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                ショート動画
+              </button>
+              <button
+                onClick={() => {
+                  setVideoDuration('medium');
+                  if (activeTab === 'popular') {
+                    getPopularYouTubeVideos('medium');
+                  } else if (activeTab === 'search' && youtubeSearchQuery) {
+                    searchYouTubeVideos(youtubeSearchQuery, 'medium');
+                  }
+                }}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  videoDuration === 'medium' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                通常動画
+              </button>
+              <button
+                onClick={() => {
+                  setVideoDuration('long');
+                  if (activeTab === 'popular') {
+                    getPopularYouTubeVideos('long');
+                  } else if (activeTab === 'search' && youtubeSearchQuery) {
+                    searchYouTubeVideos(youtubeSearchQuery, 'long');
+                  }
+                }}
+                className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                  videoDuration === 'long' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                長編動画
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* メインコンテンツ */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
         {activeTab === 'player' && youtubeCurrentVideo && (
@@ -250,17 +337,48 @@ const YouTube: React.FC = () => {
 
         {(activeTab === 'search' || activeTab === 'popular') && (
           <div>
-            {youtubeIsLoading ? (
+            {youtubeIsLoading && youtubeVideos.length === 0 ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 size={32} className="animate-spin text-blue-600" />
                 <span className="ml-2 text-gray-600">動画を読み込み中...</span>
               </div>
             ) : youtubeVideos.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                {youtubeVideos.map((video) => (
-                  <VideoCard key={video.id} video={video} />
-                ))}
-              </div>
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                  {youtubeVideos.map((video) => (
+                    <VideoCard key={video.id} video={video} />
+                  ))}
+                </div>
+                
+                {/* もっと見るボタン */}
+                {youtubeNextPageToken && (
+                  <div className="flex justify-center mt-8">
+                    <Button
+                      onClick={() => {
+                        if (activeTab === 'search' && youtubeSearchQuery) {
+                          searchYouTubeVideos(youtubeSearchQuery, videoDuration, true);
+                        } else if (activeTab === 'popular') {
+                          getPopularYouTubeVideos(videoDuration, true);
+                        }
+                      }}
+                      disabled={youtubeIsLoading}
+                      className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200"
+                    >
+                      {youtubeIsLoading ? (
+                        <div className="flex items-center gap-2">
+                          <Loader2 size={16} className="animate-spin" />
+                          読み込み中...
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Play size={16} />
+                          もっと見る（20件追加）
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="text-center py-12">
                 <Play size={48} className="mx-auto text-gray-400 mb-4" />
@@ -285,7 +403,7 @@ const YouTube: React.FC = () => {
                     description: '',
                     thumbnail: favorite.thumbnail,
                     channelTitle: favorite.channelTitle,
-                    publishedAt: favorite.addedAt.toISOString(),
+                    publishedAt: favorite.addedAt instanceof Date ? favorite.addedAt.toISOString() : favorite.addedAt,
                     duration: '',
                     viewCount: '',
                     likeCount: ''

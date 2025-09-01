@@ -9,7 +9,7 @@ export class YouTubeAPI {
     return config.apiKey;
   }
 
-  static async searchVideos(query: string, maxResults: number = 20, pageToken?: string): Promise<YouTubeSearchResult> {
+  static async searchVideos(query: string, maxResults: number = 20, pageToken?: string, videoDuration?: 'short' | 'medium' | 'long'): Promise<YouTubeSearchResult> {
     const apiKey = this.getApiKey();
     if (!apiKey) {
       throw new Error('YouTube API key is not configured');
@@ -27,6 +27,10 @@ export class YouTubeAPI {
 
     if (pageToken) {
       params.append('pageToken', pageToken);
+    }
+
+    if (videoDuration) {
+      params.append('videoDuration', videoDuration);
     }
 
     const response = await fetch(`${YOUTUBE_API_BASE_URL}/search?${params}`);
@@ -91,7 +95,7 @@ export class YouTubeAPI {
     }));
   }
 
-  static async getPopularVideos(categoryId?: string, maxResults: number = 20): Promise<YouTubeSearchResult> {
+  static async getPopularVideos(categoryId?: string, maxResults: number = 20, videoDuration?: 'short' | 'medium' | 'long'): Promise<YouTubeSearchResult> {
     const apiKey = this.getApiKey();
     if (!apiKey) {
       throw new Error('YouTube API key is not configured');
@@ -108,6 +112,10 @@ export class YouTubeAPI {
 
     if (categoryId) {
       params.append('videoCategoryId', categoryId);
+    }
+
+    if (videoDuration) {
+      params.append('videoDuration', videoDuration);
     }
 
     const response = await fetch(`${YOUTUBE_API_BASE_URL}/videos?${params}`);
