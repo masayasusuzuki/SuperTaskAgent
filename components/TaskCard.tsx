@@ -94,10 +94,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
     };
     updateTask(updatedTask);
     
-    // タスクが完了状態になった場合、目標の進捗を自動更新
-    if (newStatus === 'completed') {
-      updateGoalProgressFromTask(updatedTask);
-    }
+    // 自動更新機能を無効化（コメントアウト）
+    // if (newStatus === 'completed') {
+    //   updateGoalProgressFromTask(updatedTask);
+    // }
   };
 
   // タスク完了時に目標の進捗を自動更新
@@ -241,7 +241,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
                   completedAt: new Date()
                 };
                 updateTask(updatedTask);
-                updateGoalProgressFromTask(updatedTask);
+                // 自動更新機能を無効化（コメントアウト）
+                // updateGoalProgressFromTask(updatedTask);
                 
                 // 少し待ってから完了状態をリセット
                 setTimeout(() => {
