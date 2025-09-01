@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Save, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { Save, CheckCircle, AlertCircle, Calendar } from 'lucide-react';
 import { useTaskStore } from '@/store/useStore';
 import { DailyRecord } from '@/types';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 const DailyInput: React.FC = () => {
   const { 
@@ -17,45 +18,31 @@ const DailyInput: React.FC = () => {
   
   const currentGoals = getCurrentMonthGoals();
   
-  // 今日の日付を取得
-  const today = new Date().toISOString().split('T')[0];
-  const todayRecords = getDailyRecordsByDate(today);
-  
-  // 入力フォームの状態（文字列として管理）
-  const [formData, setFormData] = useState<{ [goalId: string]: string }>({});
+  // シンプルな状態管理
+  const [selectedDate, setSelectedDate] = useState(new Date().toLocaleDateString('en-CA'));
+  const [inputValues, setInputValues] = useState<{ [key: string]: string }>({});
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  // フォームデータを初期化（一度だけ実行）
-  useEffect(() => {
-    const initialData: { [goalId: string]: string } = {};
-    currentGoals.forEach(goal => {
-      const existingRecord = todayRecords.find(record => record.goalId === goal.id);
-      initialData[goal.id] = existingRecord?.value?.toString() || '';
-    });
-    setFormData(initialData);
-  }, []); // 依存関係を空にして一度だけ実行
-
+  // 入力値の変更処理
   const handleInputChange = (goalId: string, value: string) => {
-    setFormData(prev => ({
+    setInputValues(prev => ({
       ...prev,
       [goalId]: value
     }));
   };
 
+  // 保存処理
   const handleSave = async () => {
     setIsSaving(true);
-    setSaveStatus('idle');
-
+    
     try {
-      // 各目標の実績を保存
       for (const goal of currentGoals) {
-        const value = formData[goal.id] ? Number(formData[goal.id]) : 0;
-        const existingRecord = todayRecords.find(record => record.goalId === goal.id);
+        const value = Number(inputValues[goal.id] || 0);
+        const existingRecord = getDailyRecordsByDate(selectedDate).find(record => record.goalId === goal.id);
 
         const recordData: DailyRecord = {
           id: existingRecord?.id || Date.now().toString() + goal.id,
-          date: today,
+          date: selectedDate,
           goalId: goal.id,
           value: value,
           notes: '',
@@ -69,12 +56,8 @@ const DailyInput: React.FC = () => {
           addDailyRecord(recordData);
         }
       }
-
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus('idle'), 2000);
     } catch (error) {
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 2000);
+      console.error('保存エラー:', error);
     } finally {
       setIsSaving(false);
     }
@@ -118,35 +101,48 @@ const DailyInput: React.FC = () => {
             </span>
           </div>
         </div>
-        <div className="text-sm text-gray-500">
-          {new Date().toLocaleDateString('ja-JP', { 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            weekday: 'long'
-          })}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Calendar size={16} className="text-gray-500" />
+            <label htmlFor="date-select" className="text-sm text-gray-700 font-medium">記録日付</label>
+          </div>
+          <Input
+            id="date-select"
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="w-48 text-sm"
+            max={new Date().toLocaleDateString('en-CA')}
+          />
         </div>
       </div>
 
       {/* コンテンツエリア */}
       <div className="flex-1 overflow-y-auto p-4 md:p-6">
-        {/* 今日の日付表示 */}
+        {/* 選択された日付表示 */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <h2 className="text-lg font-semibold text-blue-900">
-            {new Date().toLocaleDateString('ja-JP', { 
+            {new Date(selectedDate + 'T00:00:00').toLocaleDateString('ja-JP', { 
               year: 'numeric', 
               month: 'long', 
               day: 'numeric',
               weekday: 'long'
             })}
           </h2>
-          <p className="text-blue-700 mt-1">今日の実績を記録しましょう</p>
+          <p className="text-blue-700 mt-1">
+            {selectedDate === new Date().toLocaleDateString('en-CA') 
+              ? '今日の実績を記録しましょう' 
+              : 'この日の実績を記録しましょう'
+            }
+          </p>
         </div>
 
         {/* 日次入力フォーム */}
         <div className="bg-white rounded-lg border border-gray-200">
           <div className="px-4 md:px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900">今日の実績入力</h3>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {selectedDate === new Date().toLocaleDateString('en-CA') ? '今日の実績入力' : 'この日の実績入力'}
+            </h3>
           </div>
           
           <div className="p-4 md:p-6">
@@ -184,7 +180,7 @@ const DailyInput: React.FC = () => {
                       {/* 入力部分 */}
                       <div className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
                         <div className="flex items-center justify-between mb-3">
-                          <label className="text-sm font-medium text-gray-700">今日の実績</label>
+                          <label className="text-sm font-medium text-gray-700">実績入力</label>
                           <span className="text-sm text-gray-500">
                             目標: <span className="font-semibold text-blue-600">{goal.targetValue} {goal.unit}</span>
                           </span>
@@ -195,9 +191,9 @@ const DailyInput: React.FC = () => {
                             <input
                               type="number"
                               placeholder="0"
-                              value={formData[goal.id] || ''}
+                              value={inputValues[goal.id] || ''}
                               onChange={(e) => handleInputChange(goal.id, e.target.value)}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-xl font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-xl font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               min="0"
                               step="0.1"
                             />
@@ -210,10 +206,10 @@ const DailyInput: React.FC = () => {
                         {/* 目標との比較 */}
                         <div className="mt-3 flex items-center justify-between text-sm">
                           <span className="text-gray-600">
-                            今日: <span className="font-semibold text-gray-900">{formData[goal.id] ? Number(formData[goal.id]) : 0}</span> / {goal.targetValue}
+                            入力値: <span className="font-semibold text-gray-900">{inputValues[goal.id] ? Number(inputValues[goal.id]) : 0}</span> / {goal.targetValue}
                           </span>
-                          <span className={`font-semibold ${(formData[goal.id] ? Number(formData[goal.id]) : 0) >= goal.targetValue ? 'text-green-600' : 'text-orange-600'}`}>
-                            {(formData[goal.id] ? Number(formData[goal.id]) : 0) >= goal.targetValue ? '✓ 目標達成！' : `${goal.targetValue - (formData[goal.id] ? Number(formData[goal.id]) : 0)} 残り`}
+                          <span className={`font-semibold ${(inputValues[goal.id] ? Number(inputValues[goal.id]) : 0) >= goal.targetValue ? 'text-green-600' : 'text-orange-600'}`}>
+                            {(inputValues[goal.id] ? Number(inputValues[goal.id]) : 0) >= goal.targetValue ? '✓ 目標達成！' : `${goal.targetValue - (inputValues[goal.id] ? Number(inputValues[goal.id]) : 0)} 残り`}
                           </span>
                         </div>
                       </div>
@@ -233,7 +229,7 @@ const DailyInput: React.FC = () => {
                           />
                         </div>
                         <div className="mt-2 text-xs text-gray-500">
-                          残り {progress ? Math.max(0, goal.targetValue - (progress.currentValue + (formData[goal.id] ? Number(formData[goal.id]) : 0))) : goal.targetValue} {goal.unit}
+                          残り {progress ? Math.max(0, goal.targetValue - (progress.currentValue + (inputValues[goal.id] ? Number(inputValues[goal.id]) : 0))) : goal.targetValue} {goal.unit}
                         </div>
                       </div>
                     </div>
@@ -254,22 +250,10 @@ const DailyInput: React.FC = () => {
                     ) : (
                       <div className="flex items-center gap-3">
                         <Save size={20} />
-                        今日の実績を保存
+                        {selectedDate === new Date().toLocaleDateString('en-CA') ? '今日の実績を保存' : 'この日の実績を保存'}
                       </div>
                     )}
                   </Button>
-                  
-                  {/* 保存ステータス */}
-                  {saveStatus === 'success' && (
-                    <div className="mt-2 text-center text-green-600 text-sm">
-                      ✓ 実績が保存されました
-                    </div>
-                  )}
-                  {saveStatus === 'error' && (
-                    <div className="mt-2 text-center text-red-600 text-sm">
-                      ✗ 保存に失敗しました
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -277,15 +261,17 @@ const DailyInput: React.FC = () => {
         </div>
 
         {/* 入力履歴 */}
-        {todayRecords.length > 0 && (
+        {getDailyRecordsByDate(selectedDate).length > 0 && (
           <div className="bg-white rounded-lg border border-gray-200 mt-6">
             <div className="px-4 md:px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">今日の入力履歴</h3>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {selectedDate === new Date().toLocaleDateString('en-CA') ? '今日の入力履歴' : 'この日の入力履歴'}
+              </h3>
             </div>
             
             <div className="p-4 md:p-6">
               <div className="space-y-2">
-                {todayRecords.map((record) => {
+                {getDailyRecordsByDate(selectedDate).map((record) => {
                   const goal = currentGoals.find(g => g.id === record.goalId);
                   return (
                     <div key={record.id} className="flex items-center justify-between py-2">

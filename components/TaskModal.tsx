@@ -19,8 +19,10 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
   const { labels, addTask, updateTask } = useTaskStore();
   // 今日の日付を取得
   const getToday = () => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    // 最もシンプルで確実な方法
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // 時間を00:00:00にリセット
+    return today;
   };
 
   const [formData, setFormData] = useState({
@@ -29,8 +31,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
     status: 'not-started' as Task['status'],
     priority: 'medium' as Task['priority'],
     label: '',
-    startDate: getToday(),
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1週間後
+    startDate: new Date(), // 初期値は空のDate、useEffectで設定
+    dueDate: new Date(), // 初期値は空のDate、useEffectで設定
     progress: 0
   });
 
@@ -38,8 +40,19 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // フォームデータの初期化（新規作成時）
   useEffect(() => {
-    if (task) {
+    if (!task) {
+      const today = getToday();
+      const oneWeekLater = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000);
+      
+      setFormData(prev => ({
+        ...prev,
+        startDate: today,
+        dueDate: oneWeekLater
+      }));
+    } else {
+      // 既存タスクの編集時
       setFormData({
         title: task.title,
         description: task.description,
@@ -233,7 +246,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
               <Input
                 id="startDate"
                 type="date"
-                value={formData.startDate.toISOString().split('T')[0]}
+                value={formData.startDate.toLocaleDateString('en-CA')}
                 onChange={(e) => handleDateChange('startDate', e.target.value)}
               />
             </div>
@@ -246,7 +259,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
               <Input
                 id="dueDate"
                 type="date"
-                value={formData.dueDate.toISOString().split('T')[0]}
+                value={formData.dueDate.toLocaleDateString('en-CA')}
                 onChange={(e) => handleDateChange('dueDate', e.target.value)}
                 className={errors.dueDate ? 'border-red-500' : ''}
               />
