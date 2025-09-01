@@ -16,12 +16,8 @@ const TodaysSchedule: React.FC = () => {
   const today = new Date();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // 今日のタスクを取得
-  const todaysTasks = tasks.filter(task => {
-    const taskStart = task.startDate instanceof Date ? task.startDate : new Date(task.startDate);
-    const taskEnd = task.dueDate instanceof Date ? task.dueDate : new Date(task.dueDate);
-    return today >= taskStart && today <= taskEnd;
-  });
+  // 今日のタスクを取得（カレンダーではタスクを表示しない）
+  const todaysTasks: any[] = [];
 
   // 今日のGoogleカレンダーイベントを取得
   const todaysGoogleEvents = googleEvents.filter(event => {
@@ -93,7 +89,7 @@ const TodaysSchedule: React.FC = () => {
     return title;
   };
 
-  const totalEvents = todaysTasks.length + sortedEvents.length;
+  const totalEvents = sortedEvents.length;
 
   if (totalEvents === 0) {
     return (
@@ -134,28 +130,6 @@ const TodaysSchedule: React.FC = () => {
       </div>
       
       <div className="space-y-3">
-        {/* タスク */}
-        {todaysTasks.map((task) => (
-          <div 
-            key={`task-${task.id}`} 
-            className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer group"
-            onClick={() => setIsModalOpen(true)}
-          >
-            <div className="w-3 h-3 bg-gradient-to-r from-orange-400 to-red-500 rounded-full shadow-sm"></div>
-            <div className="flex-1">
-              <div className="text-sm font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{task.title}</div>
-              <div className="text-xs text-gray-500 flex items-center gap-2">
-                <span>タスク</span>
-                <span>•</span>
-                <span>{task.priority}優先度</span>
-              </div>
-            </div>
-            <div className="text-xs text-gray-400 group-hover:text-blue-500 transition-colors">
-              →
-            </div>
-          </div>
-        ))}
-        
         {/* Googleカレンダーイベント */}
         {sortedEvents.map((event) => (
           <div 
@@ -195,7 +169,7 @@ const TodaysSchedule: React.FC = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         selectedDate={today}
-        events={{ tasks: todaysTasks, googleEvents: sortedEvents }}
+        events={{ tasks: [], googleEvents: sortedEvents }}
         getLabelById={getLabelById}
       />
     </div>

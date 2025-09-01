@@ -17,11 +17,10 @@ interface TaskModalProps {
 
 const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
   const { labels, addTask, updateTask } = useTaskStore();
-  // 日本時間の今日の日付を取得
-  const getTodayInJapan = () => {
+  // 今日の日付を取得
+  const getToday = () => {
     const now = new Date();
-    const japanTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Tokyo"}));
-    return new Date(japanTime.getFullYear(), japanTime.getMonth(), japanTime.getDate());
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   };
 
   const [formData, setFormData] = useState({
@@ -30,7 +29,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ task, onSave, onClose }) => {
     status: 'not-started' as Task['status'],
     priority: 'medium' as Task['priority'],
     label: '',
-    startDate: getTodayInJapan(),
+    startDate: getToday(),
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1週間後
     progress: 0
   });

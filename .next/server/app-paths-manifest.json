@@ -1,5 +1,5 @@
 {
-  "/api/google-calendar/route": "app/api/google-calendar/route.js",
+  "/page": "app/page.js",
   "/auth/callback/page": "app/auth/callback/page.js",
-  "/page": "app/page.js"
+  "/api/google-calendar/route": "app/api/google-calendar/route.js"
 }
