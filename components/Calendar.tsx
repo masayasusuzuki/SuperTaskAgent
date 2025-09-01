@@ -13,7 +13,14 @@ import CalendarEventModal from './CalendarEventModal';
 // 今日の予定コンポーネント
 const TodaysSchedule: React.FC = () => {
   const { tasks, googleEvents, getLabelById } = useTaskStore();
-  const today = new Date();
+  
+  // 今日の日付を正確に取得
+  const getToday = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  };
+  
+  const today = getToday();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 今日のタスクを取得（カレンダーではタスクを表示しない）
@@ -187,7 +194,14 @@ export default function Calendar() {
     setGoogleEvents,
     setGoogleCalendars
   } = useTaskStore();
-  const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // 今日の日付を正確に取得
+  const getToday = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  };
+  
+  const [currentDate, setCurrentDate] = useState(getToday());
   const [isLoadingGoogleEvents, setIsLoadingGoogleEvents] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -340,7 +354,7 @@ export default function Calendar() {
   };
 
   const goToToday = () => {
-    setCurrentDate(new Date());
+    setCurrentDate(getToday());
   };
 
   // 日付クリックハンドラー
