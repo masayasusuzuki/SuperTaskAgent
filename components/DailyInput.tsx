@@ -21,22 +21,22 @@ const DailyInput: React.FC = () => {
   const today = new Date().toISOString().split('T')[0];
   const todayRecords = getDailyRecordsByDate(today);
   
-  // 入力フォームの状態
-  const [formData, setFormData] = useState<{ [goalId: string]: number }>({});
+  // 入力フォームの状態（文字列として管理）
+  const [formData, setFormData] = useState<{ [goalId: string]: string }>({});
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  // フォームデータを初期化
+  // フォームデータを初期化（一度だけ実行）
   useEffect(() => {
-    const initialData: { [goalId: string]: number } = {};
+    const initialData: { [goalId: string]: string } = {};
     currentGoals.forEach(goal => {
       const existingRecord = todayRecords.find(record => record.goalId === goal.id);
-      initialData[goal.id] = existingRecord?.value || 0;
+      initialData[goal.id] = existingRecord?.value?.toString() || '';
     });
     setFormData(initialData);
-  }, [currentGoals, todayRecords]);
+  }, []); // 依存関係を空にして一度だけ実行
 
-  const handleInputChange = (goalId: string, value: number) => {
+  const handleInputChange = (goalId: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [goalId]: value
@@ -50,7 +50,7 @@ const DailyInput: React.FC = () => {
     try {
       // 各目標の実績を保存
       for (const goal of currentGoals) {
-        const value = formData[goal.id] || 0;
+        const value = formData[goal.id] ? Number(formData[goal.id]) : 0;
         const existingRecord = todayRecords.find(record => record.goalId === goal.id);
 
         const recordData: DailyRecord = {
@@ -162,74 +162,98 @@ const DailyInput: React.FC = () => {
                 {currentGoals.map((goal) => {
                   const progress = getGoalProgress(goal.id, `${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}`);
                   const progressPercentage = progress ? progress.progressPercentage : 0;
-                  const value = formData[goal.id] || 0;
                   
                   return (
-                    <div key={goal.id} className="border border-gray-200 rounded-lg p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
+                    <div key={goal.id} className="bg-gradient-to-r from-gray-50 to-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                      {/* ヘッダー部分 */}
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{goal.name}</h4>
+                          <h4 className="text-lg font-semibold text-gray-900 mb-1">{goal.name}</h4>
                           {goal.description && (
                             <p className="text-sm text-gray-600">{goal.description}</p>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-full shadow-sm">
                           {getProgressIcon(progressPercentage)}
-                          <span className={`text-sm font-medium ${getProgressColor(progressPercentage)}`}>
+                          <span className={`text-sm font-bold ${getProgressColor(progressPercentage)}`}>
                             {progressPercentage.toFixed(1)}%
                           </span>
                         </div>
                       </div>
                       
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                        <div className="flex items-center gap-3">
-                          <input
-                            type="number"
-                            placeholder="0"
-                            value={value}
-                            onChange={(e) => handleInputChange(goal.id, Number(e.target.value) || 0)}
-                            className="w-20 px-3 py-2 border border-gray-300 rounded-md text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            min="0"
-                          />
-                          <span className="text-sm text-gray-600">{goal.unit}</span>
+                      {/* 入力部分 */}
+                      <div className="bg-white rounded-lg p-4 border border-gray-200 mb-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <label className="text-sm font-medium text-gray-700">今日の実績</label>
+                          <span className="text-sm text-gray-500">
+                            目標: <span className="font-semibold text-blue-600">{goal.targetValue} {goal.unit}</span>
+                          </span>
                         </div>
-                        <span className="text-sm text-gray-500">
-                          (目標: {goal.targetValue} {goal.unit})
-                        </span>
+                        
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1">
+                            <input
+                              type="number"
+                              placeholder="0"
+                              value={formData[goal.id] || ''}
+                              onChange={(e) => handleInputChange(goal.id, e.target.value)}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg text-center text-xl font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
+                              min="0"
+                              step="0.1"
+                            />
+                          </div>
+                          <div className="text-lg font-semibold text-gray-700 min-w-[60px]">
+                            {goal.unit}
+                          </div>
+                        </div>
+                        
+                        {/* 目標との比較 */}
+                        <div className="mt-3 flex items-center justify-between text-sm">
+                          <span className="text-gray-600">
+                            今日: <span className="font-semibold text-gray-900">{formData[goal.id] ? Number(formData[goal.id]) : 0}</span> / {goal.targetValue}
+                          </span>
+                          <span className={`font-semibold ${(formData[goal.id] ? Number(formData[goal.id]) : 0) >= goal.targetValue ? 'text-green-600' : 'text-orange-600'}`}>
+                            {(formData[goal.id] ? Number(formData[goal.id]) : 0) >= goal.targetValue ? '✓ 目標達成！' : `${goal.targetValue - (formData[goal.id] ? Number(formData[goal.id]) : 0)} 残り`}
+                          </span>
+                        </div>
                       </div>
                       
                       {/* 月間進捗バー */}
-                      <div className="mt-3">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-gray-500">
-                            月間: {progress?.currentValue || 0} / {goal.targetValue} {goal.unit}
+                      <div className="bg-white rounded-lg p-4 border border-gray-200">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm font-medium text-gray-700">月間進捗</span>
+                          <span className="text-sm text-gray-600">
+                            {progress?.currentValue || 0} / {goal.targetValue} {goal.unit}
                           </span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-1">
+                        <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                           <div
-                            className={`h-1 rounded-full transition-all duration-300 ${getProgressColor(progressPercentage).replace('text-', 'bg-')}`}
+                            className={`h-3 rounded-full transition-all duration-500 ${getProgressColor(progressPercentage).replace('text-', 'bg-')}`}
                             style={{ width: `${Math.min(progressPercentage, 100)}%` }}
                           />
+                        </div>
+                        <div className="mt-2 text-xs text-gray-500">
+                          残り {progress ? Math.max(0, goal.targetValue - (progress.currentValue + (formData[goal.id] ? Number(formData[goal.id]) : 0))) : goal.targetValue} {goal.unit}
                         </div>
                       </div>
                     </div>
                   );
                 })}
                 
-                <div className="pt-4">
+                <div className="pt-6">
                   <Button
                     onClick={handleSave}
                     disabled={isSaving}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400"
+                    className="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold py-4 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
                   >
                     {isSaving ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <div className="flex items-center gap-3">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                         保存中...
                       </div>
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <Save size={16} />
+                      <div className="flex items-center gap-3">
+                        <Save size={20} />
                         今日の実績を保存
                       </div>
                     )}

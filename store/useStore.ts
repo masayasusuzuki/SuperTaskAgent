@@ -80,6 +80,7 @@ interface TaskStore {
   addDailyRecord: (record: DailyRecord) => void;
   updateDailyRecord: (record: DailyRecord) => void;
   deleteDailyRecord: (recordId: string) => void;
+  clearAllData: () => void;
   
   // Computed
   getFilteredTasks: () => Task[];
@@ -225,6 +226,16 @@ export const useTaskStore = create<TaskStore>()(
       deleteDailyRecord: (recordId) => set((state) => ({
         dailyRecords: state.dailyRecords.filter(r => r.id !== recordId)
       })),
+      
+      // 全データを削除
+      clearAllData: () => set({
+        tasks: [],
+        labels: getDefaultLabels(),
+        goals: [],
+        dailyRecords: [],
+        googleEvents: [],
+        debugHistory: []
+      }),
 
       // Computed
       getFilteredTasks: () => {
