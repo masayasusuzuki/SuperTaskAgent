@@ -12,6 +12,7 @@ import Stats from '@/components/Stats';
 import CompletedTasks from '@/components/CompletedTasks';
 import Settings from '@/components/Settings';
 import Debug from '@/components/Debug';
+import YouTube from '@/components/YouTube';
 import { storage } from '@/lib/storage';
 
 export default function Home() {
@@ -93,6 +94,8 @@ export default function Home() {
         return <CompletedTasks />;
       case 'settings':
         return <Settings />;
+      case 'youtube':
+        return <YouTube />;
       case 'debug':
         return <Debug />;
       default:

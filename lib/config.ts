@@ -35,3 +35,10 @@ export const getGoogleCalendarConfig = () => {
     redirectUri: getEnvVar('GOOGLE_REDIRECT_URI')
   };
 };
+
+// YouTube設定の取得
+export const getYouTubeConfig = () => {
+  return {
+    apiKey: getEnvVar('YOUTUBE_API_KEY')
+  };
+};

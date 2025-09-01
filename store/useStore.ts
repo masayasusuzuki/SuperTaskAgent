@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Task, Label, TaskFilter, SortOption, Goal, DailyRecord, GoalProgress, GoalType } from '@/types';
+import { Task, Label, TaskFilter, SortOption, Goal, DailyRecord, GoalProgress, GoalType, YouTubeVideo, YouTubeFavorite } from '@/types';
 import { GoogleCalendar, GoogleCalendarEvent } from '@/lib/googleCalendar';
 import { storage } from '@/lib/storage';
 
@@ -18,7 +18,7 @@ interface TaskStore {
   // State
   tasks: Task[];
   labels: Label[];
-  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed' | 'goals' | 'daily-input';
+  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed' | 'goals' | 'daily-input' | 'youtube';
   selectedLabel: string | null;
   filters: TaskFilter;
   sortBy: SortOption;
@@ -39,6 +39,13 @@ interface TaskStore {
   goals: Goal[];
   dailyRecords: DailyRecord[];
 
+  // YouTube State
+  youtubeVideos: YouTubeVideo[];
+  youtubeFavorites: YouTubeFavorite[];
+  youtubeSearchQuery: string;
+  youtubeCurrentVideo: YouTubeVideo | null;
+  youtubeIsLoading: boolean;
+
   // Actions
   setTasks: (tasks: Task[]) => void;
   addTask: (task: Task) => void;
@@ -50,7 +57,7 @@ interface TaskStore {
   updateLabel: (label: Label) => void;
   deleteLabel: (labelId: string) => void;
   
-  setCurrentView: (view: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed' | 'goals' | 'daily-input') => void;
+  setCurrentView: (view: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed' | 'goals' | 'daily-input' | 'youtube') => void;
   setSelectedLabel: (labelId: string | null) => void;
   setFilters: (filters: TaskFilter) => void;
   setSortBy: (sortBy: SortOption) => void;
@@ -91,6 +98,17 @@ interface TaskStore {
   getDailyRecordsByDate: (date: string) => DailyRecord[];
   getGoalProgress: (goalId: string, yearMonth: string) => GoalProgress | null;
   getCurrentMonthGoals: () => Goal[];
+  
+  // YouTube Actions
+  setYouTubeVideos: (videos: YouTubeVideo[]) => void;
+  setYouTubeFavorites: (favorites: YouTubeFavorite[]) => void;
+  addYouTubeFavorite: (favorite: YouTubeFavorite) => void;
+  removeYouTubeFavorite: (videoId: string) => void;
+  setYouTubeSearchQuery: (query: string) => void;
+  setYouTubeCurrentVideo: (video: YouTubeVideo | null) => void;
+  setYouTubeIsLoading: (loading: boolean) => void;
+  searchYouTubeVideos: (query: string) => Promise<void>;
+  getPopularYouTubeVideos: () => Promise<void>;
 }
 
 // デフォルトラベル
@@ -141,6 +159,13 @@ export const useTaskStore = create<TaskStore>()(
       // Goal Management State
       goals: [],
       dailyRecords: [],
+
+      // YouTube State
+      youtubeVideos: [],
+      youtubeFavorites: [],
+      youtubeSearchQuery: '',
+      youtubeCurrentVideo: null,
+      youtubeIsLoading: false,
 
       // Actions
       setTasks: (tasks) => set({ tasks }),
@@ -371,6 +396,75 @@ export const useTaskStore = create<TaskStore>()(
         const yearMonth = `${currentDate.getFullYear()}-${(currentDate.getMonth() + 1).toString().padStart(2, '0')}`;
         return goals.filter(goal => goal.yearMonth === yearMonth);
       },
+
+      // YouTube Actions
+      setYouTubeVideos: (videos) => set({ youtubeVideos: videos }),
+      setYouTubeFavorites: (favorites) => set({ youtubeFavorites: favorites }),
+      addYouTubeFavorite: (favorite) => set((state) => ({ 
+        youtubeFavorites: [...state.youtubeFavorites, favorite] 
+      })),
+      removeYouTubeFavorite: (videoId) => set((state) => ({ 
+        youtubeFavorites: state.youtubeFavorites.filter(f => f.videoId !== videoId) 
+      })),
+      setYouTubeSearchQuery: (query) => set({ youtubeSearchQuery: query }),
+      setYouTubeCurrentVideo: (video) => set({ youtubeCurrentVideo: video }),
+      setYouTubeIsLoading: (loading) => set({ youtubeIsLoading: loading }),
+      
+      searchYouTubeVideos: async (query) => {
+        const { setYouTubeVideos, setYouTubeIsLoading, addDebugInfo } = get();
+        setYouTubeIsLoading(true);
+        
+        try {
+          const { YouTubeAPI } = await import('@/lib/youtube');
+          const result = await YouTubeAPI.searchVideos(query);
+          setYouTubeVideos(result.videos);
+          
+          addDebugInfo({
+            type: 'general',
+            title: 'YouTube Search',
+            data: { query, results: result.videos.length },
+            status: 'success'
+          });
+        } catch (error) {
+          console.error('YouTube search error:', error);
+          addDebugInfo({
+            type: 'general',
+            title: 'YouTube Search Error',
+            data: { query, error: error instanceof Error ? error.message : String(error) },
+            status: 'error'
+          });
+        } finally {
+          setYouTubeIsLoading(false);
+        }
+      },
+      
+      getPopularYouTubeVideos: async () => {
+        const { setYouTubeVideos, setYouTubeIsLoading, addDebugInfo } = get();
+        setYouTubeIsLoading(true);
+        
+        try {
+          const { YouTubeAPI } = await import('@/lib/youtube');
+          const result = await YouTubeAPI.getPopularVideos();
+          setYouTubeVideos(result.videos);
+          
+          addDebugInfo({
+            type: 'general',
+            title: 'YouTube Popular Videos',
+            data: { results: result.videos.length },
+            status: 'success'
+          });
+        } catch (error) {
+          console.error('YouTube popular videos error:', error);
+          addDebugInfo({
+            type: 'general',
+            title: 'YouTube Popular Videos Error',
+            data: { error: error instanceof Error ? error.message : String(error) },
+            status: 'error'
+          });
+        } finally {
+          setYouTubeIsLoading(false);
+        }
+      },
     }),
     {
       name: 'task-management-storage',
@@ -390,6 +484,8 @@ export const useTaskStore = create<TaskStore>()(
         maxDebugHistory: state.maxDebugHistory,
         goals: state.goals,
         dailyRecords: state.dailyRecords,
+        youtubeVideos: state.youtubeVideos,
+        youtubeFavorites: state.youtubeFavorites,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

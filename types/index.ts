@@ -67,10 +67,40 @@ export interface GoalProgress {
   remainingDays: number;
 }
 
+// YouTube関連の型定義
+export interface YouTubeVideo {
+  id: string;
+  title: string;
+  description: string;
+  thumbnail: string;
+  channelTitle: string;
+  publishedAt: string;
+  duration: string;
+  viewCount: string;
+  likeCount: string;
+  videoId: string;
+}
+
+export interface YouTubeSearchResult {
+  videos: YouTubeVideo[];
+  nextPageToken?: string;
+  totalResults: number;
+}
+
+export interface YouTubeFavorite {
+  id: string;
+  videoId: string;
+  title: string;
+  thumbnail: string;
+  channelTitle: string;
+  addedAt: Date;
+  notes?: string;
+}
+
 export interface AppState {
   tasks: Task[];
   labels: Label[];
-  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed' | 'goals' | 'daily-input';
+  currentView: 'todo' | 'gantt' | 'calendar' | 'stats' | 'settings' | 'debug' | 'completed' | 'goals' | 'daily-input' | 'youtube';
   filters: TaskFilter;
   sortBy: SortOption;
   sortOrder: 'asc' | 'desc';

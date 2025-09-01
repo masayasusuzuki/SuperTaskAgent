@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { List, BarChart3, Settings, Plus, Tag, Calendar, Bug, CheckCircle, Target, CalendarDays } from 'lucide-react';
+import { List, BarChart3, Settings, Plus, Tag, Calendar, Bug, CheckCircle, Target, CalendarDays, Play } from 'lucide-react';
 import { useTaskStore } from '@/store/useStore';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -29,6 +29,7 @@ const Sidebar: React.FC = () => {
     { id: 'goals', label: '目標', icon: Target, badge: undefined },
     { id: 'daily-input', label: '日次入力', icon: CalendarDays, badge: undefined },
     { id: 'completed', label: '完了', icon: CheckCircle, badge: undefined },
+    { id: 'youtube', label: 'YouTube', icon: Play, badge: undefined },
     { id: 'debug', label: 'デバッグ', icon: Bug, badge: undefined },
     { id: 'settings', label: '設定', icon: Settings, badge: undefined }
   ] as const;
